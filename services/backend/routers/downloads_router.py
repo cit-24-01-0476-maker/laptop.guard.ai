@@ -1,8 +1,9 @@
 import os
 import io
 import zipfile
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import Response, JSONResponse, FileResponse, RedirectResponse
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["Downloads & Updates"])
 
@@ -23,6 +24,7 @@ async def get_version_manifest():
         "release_notes": "Added 15s smart auto-silence siren, iOS liquid glass light UI, and low-latency webcam streaming.",
         "download_urls": {
             "windows_agent": "/api/v1/downloads/windows-agent",
+            "windows_exe": "/api/v1/downloads/windows-exe",
             "android_apk": "/api/v1/downloads/android-apk"
         }
     }
@@ -30,47 +32,52 @@ async def get_version_manifest():
 @router.get("/windows-agent")
 async def download_windows_agent():
     """
-    Delivers a pre-configured Windows Desktop Agent package (zip bundle with launcher).
-    Includes auto-configuration for connecting to the LaptopGuard AI Cloud.
+    Delivers a full, pre-configured Windows Desktop Agent package (zip bundle with launcher).
+    Packages all source files from apps/desktop-agent so it runs with a single click.
     """
+    root = Path(__file__).resolve().parents[3]
+    agent_dir = root / "apps" / "desktop-agent"
+    
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         # Launcher script
         launcher_bat = (
             "@echo off\r\n"
+            "title LaptopGuard AI - Desktop Sentinel v1.4.2\r\n"
             "echo ====================================================\r\n"
-            "echo     LaptopGuard AI - Windows Hardware Agent\r\n"
+            "echo     LaptopGuard AI - Windows Hardware Sentinel\r\n"
             "echo ====================================================\r\n"
-            "echo Starting Win32 Hardware Sentinel & Watchdog...\r\n"
-            "python -m pip install -r requirements.txt --quiet\r\n"
-            "python agent_main.py\r\n"
+            "echo Checking Python dependencies...\r\n"
+            "python -m pip install customtkinter requests websockets psutil pillow --quiet\r\n"
+            "echo Launching Sentinel GUI...\r\n"
+            "python desktop_app.py\r\n"
             "pause\r\n"
         )
-        zf.writestr("Run-LaptopGuard-Agent.bat", launcher_bat)
+        zf.writestr("Run-LaptopGuard.bat", launcher_bat)
 
-        # Config file
-        config_ini = (
-            "[LaptopGuard]\r\n"
-            "server_url = http://localhost:8000\r\n"
-            "ws_url = ws://localhost:8000/ws/agent\r\n"
-            "device_name = My Guarded Laptop\r\n"
-            "agent_version = 1.4.2\r\n"
-            "watchdog_ac_interval_ms = 500\r\n"
-            "alarm_auto_timeout_seconds = 15\r\n"
-        )
-        zf.writestr("config.ini", config_ini)
-
-        # Readme instructions
+        # Instructions
         readme_txt = (
-            "LaptopGuard AI - Windows Hardware Agent v1.4.2\r\n"
-            "----------------------------------------------\r\n"
-            "1. Extract this folder to any location on your Windows laptop.\r\n"
-            "2. Double-click 'Run-LaptopGuard-Agent.bat'.\r\n"
-            "3. When prompted, enter your Pairing Code from your Web Dashboard.\r\n"
-            "4. Your laptop is now protected with 500ms AC power watchdog,\r\n"
-            "   instant deterrence siren, and remote Windows lock!\r\n"
+            f"LaptopGuard AI - Windows Desktop Sentinel v{CURRENT_VERSION}\r\n"
+            "====================================================\r\n"
+            "1. Extract this entire zip archive to your laptop.\r\n"
+            "2. Double-click 'Run-LaptopGuard.bat'.\r\n"
+            "3. Sign in with your LaptopGuard account (same as Web Dashboard).\r\n"
+            "4. Your laptop is now protected with 500ms AC disconnect watchdog,\r\n"
+            "   15-second auto-silence siren, and instant remote lock!\r\n"
         )
-        zf.writestr("README-INSTALL.txt", readme_txt)
+        zf.writestr("README.txt", readme_txt)
+
+        # Include agent source code files
+        if agent_dir.exists():
+            for file_path in agent_dir.rglob("*"):
+                if file_path.is_file():
+                    # Skip cache and local state files
+                    if any(part in file_path.parts for part in ["__pycache__", ".git", ".venv", "csharp-agent"]):
+                        continue
+                    if file_path.name in ["session.json", "offline_events.enc.json"]:
+                        continue
+                    arcname = file_path.relative_to(agent_dir)
+                    zf.write(file_path, arcname=str(arcname))
 
     zip_buffer.seek(0)
     return Response(
@@ -84,30 +91,31 @@ async def download_windows_agent():
 @router.get("/windows-exe")
 async def download_windows_exe():
     """
-    Directly delivers the compiled standalone LaptopGuard-AI.exe executable.
+    Delivers the compiled standalone LaptopGuard-AI.exe executable.
+    If available locally on disk, serves it directly.
+    Otherwise, redirects to GitHub Release binary.
     """
-    from pathlib import Path
     root = Path(__file__).resolve().parents[3]
     exe_path = root / "dist" / "LaptopGuard-AI.exe"
     if not exe_path.exists():
         exe_path = root / "dist" / "LaptopGuard-AI" / "LaptopGuard-AI.exe"
+    
     if exe_path.exists():
-        from fastapi.responses import FileResponse
         return FileResponse(
             path=str(exe_path),
             filename=f"LaptopGuard-AI-v{CURRENT_VERSION}.exe",
             media_type="application/octet-stream"
         )
-    else:
-        raise HTTPException(status_code=404, detail="Compiled executable not found.")
+    
+    # Fallback to GitHub Release permanent download link
+    release_url = f"https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v{CURRENT_VERSION}/LaptopGuard-AI.exe"
+    return RedirectResponse(url=release_url, status_code=302)
 
 @router.get("/android-apk")
 async def download_android_apk():
     """
-    Delivers the Android Mobile App installer package.
-    In cloud environments, this delivers the compiled APK package with embedded OTA updater.
+    Delivers the Android Mobile App installer package with embedded cloud endpoints.
     """
-    # Create an installable package payload
     apk_dummy = io.BytesIO()
     with zipfile.ZipFile(apk_dummy, "w", zipfile.ZIP_DEFLATED) as zf:
         manifest_xml = (
@@ -135,8 +143,8 @@ async def download_android_apk():
             '  "appName": "LaptopGuard AI Mobile Controller",\r\n'
             f'  "version": "{CURRENT_VERSION}",\r\n'
             '  "otaAutoUpdate": true,\r\n'
-            '  "apiEndpoint": "http://localhost:8000/api/v1",\r\n'
-            '  "wsEndpoint": "ws://localhost:8000/ws/client/usr_owner_demo"\r\n'
+            '  "apiEndpoint": "https://laptopguard-api.onrender.com/api/v1",\r\n'
+            '  "wsEndpoint": "wss://laptopguard-api.onrender.com/ws/client/usr_owner_demo"\r\n'
             '}\r\n'
         )
         zf.writestr("assets/app-config.json", info_json)
