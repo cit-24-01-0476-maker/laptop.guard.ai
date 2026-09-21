@@ -2,6 +2,9 @@
 
 > **"Protect Your Laptop. Wherever You Go."**
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcit-24-01-0476-maker%2Flaptop.guard.ai&root-directory=apps/web)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/cit-24-01-0476-maker/laptop.guard.ai)
+
 A premium, production-style personal laptop anti-theft and remote security ecosystem. Built for users leaving their laptops unattended in university libraries, cafés, classrooms, offices, and shared workspaces.
 
 ---
