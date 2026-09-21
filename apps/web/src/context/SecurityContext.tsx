@@ -84,6 +84,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (userData && userData.id) {
       realtimeHub.connect(userData.id);
     }
+    // Immediately fetch devices and data for the logged-in user
+    setTimeout(() => {
+      refreshAll();
+    }, 100);
   };
 
   const logoutUser = () => {
@@ -155,6 +159,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const unsubscribe = realtimeHub.subscribe((data) => {
       if (data.type === 'WS_CONNECTED') setIsWsConnected(true);
       if (data.type === 'WS_DISCONNECTED') setIsWsConnected(false);
+      if (data.type === 'DEVICE_STATUS_CHANGED') refreshAll();
 
       if (data.type === 'DEVICE_TELEMETRY_UPDATED') {
         setDevices(prev => prev.map(d => {
@@ -243,7 +248,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
+    const pollInterval = setInterval(() => {
+      const token = localStorage.getItem('laptopguard_token');
+      if (token) {
+        refreshAll();
+      }
+    }, 4000);
+
     return () => {
+      clearInterval(pollInterval);
       unsubscribe();
     };
   }, []);

@@ -11,7 +11,9 @@ import requests
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-SESSION_FILE = Path(__file__).resolve().parent / "session.json"
+CONFIG_DIR = Path.home() / ".laptopguard"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+SESSION_FILE = CONFIG_DIR / "session.json"
 try:
     from config import BACKEND_HTTP_URL
     BACKEND_URL = BACKEND_HTTP_URL
@@ -241,9 +243,9 @@ class ModernAgentGUI:
                             headers = {"Authorization": f"Bearer {token}"}
                             claim_payload = {
                                 "device_id": "dev_oska_xps15",
-                                "device_name": self.device_name,
-                                "battery": self.battery_pct,
-                                "is_charging": self.is_charging
+                                "device_name": getattr(self, "device_name", "Dell G15 Sentinel"),
+                                "battery": getattr(self, "battery_pct", 100),
+                                "is_charging": getattr(self, "is_charging", True)
                             }
                             requests.post(f"{BACKEND_URL}/devices/claim-or-register", json=claim_payload, headers=headers, timeout=5)
                         except Exception:

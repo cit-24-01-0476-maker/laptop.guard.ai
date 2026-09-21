@@ -234,6 +234,18 @@ class LaptopGuardDesktopApp:
                     if self.gui.cloud_badge:
                         self.gui.cloud_badge.configure(text="● CLOUD SYNC ACTIVE", text_color="#10B981")
 
+                    # Automatically bind device to logged in user on cloud hub
+                    if getattr(self.gui, 'user_token', None):
+                        try:
+                            await websocket.send(json.dumps({
+                                "type": "CLAIM_DEVICE",
+                                "token": self.gui.user_token,
+                                "email": getattr(self.gui, 'user_email', '')
+                            }))
+                            logger.info("Sent CLAIM_DEVICE envelope to Cloud Hub.")
+                        except Exception:
+                            pass
+
                     async def heartbeat_sender():
                         while is_ws_connected(self.ws):
                             try:

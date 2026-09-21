@@ -157,7 +157,31 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                 msg = json.loads(data_text)
                 msg_type = msg.get("type")
                 
-                if msg_type == "HEARTBEAT":
+                target_user_id = hub.device_user_map.get(device_id, device.user_id)
+
+                if msg_type == "CLAIM_DEVICE":
+                    token = msg.get("token")
+                    if token:
+                        try:
+                            from services.backend.auth import decode_access_token
+                            payload = decode_access_token(token)
+                            new_uid = payload.get("sub")
+                            if new_uid:
+                                device.user_id = new_uid
+                                db.commit()
+                                hub.device_user_map[device_id] = new_uid
+                                target_user_id = new_uid
+                                logger.info(f"Device {device_id} successfully bound to user {new_uid}")
+                                await hub.broadcast_to_user(new_uid, {
+                                    "type": "DEVICE_STATUS_CHANGED",
+                                    "device_id": device_id,
+                                    "status": "Protected",
+                                    "is_online": True
+                                })
+                        except Exception as ex:
+                            logger.warning(f"Failed to claim device via WebSocket: {ex}")
+
+                elif msg_type == "HEARTBEAT":
                     # Update device battery, charging state, wifi, and last seen
                     device.battery = msg.get("battery", device.battery)
                     device.is_charging = msg.get("is_charging", device.is_charging)
@@ -167,7 +191,7 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                     db.commit()
                     
                     # Notify connected user dashboard
-                    await hub.broadcast_to_user(device.user_id, {
+                    await hub.broadcast_to_user(target_user_id, {
                         "type": "DEVICE_TELEMETRY_UPDATED",
                         "device_id": device_id,
                         "battery": device.battery,
@@ -186,7 +210,7 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                         cmd.executed_at = models.datetime.datetime.utcnow()
                         db.commit()
                         
-                    await hub.broadcast_to_user(device.user_id, {
+                    await hub.broadcast_to_user(target_user_id, {
                         "type": "COMMAND_RESULT",
                         "device_id": device_id,
                         "command_id": cmd_id,
@@ -195,7 +219,6 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
 
                 elif msg_type == "WEBRTC_SIGNAL":
                     # Relay WebRTC SDP answer / ICE candidates to user dashboard
-                    target_user_id = device.user_id
                     await hub.relay_webrtc_signaling("user", target_user_id, {
                         "device_id": device_id,
                         "signal": msg.get("signal")
@@ -203,7 +226,7 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
 
                 elif msg_type == "ALARM_STATE":
                     is_active = msg.get("is_alarm_active", False)
-                    await hub.broadcast_to_user(device.user_id, {
+                    await hub.broadcast_to_user(target_user_id, {
                         "type": "ALARM_STATE_CHANGED",
                         "device_id": device_id,
                         "is_alarm_active": is_active
