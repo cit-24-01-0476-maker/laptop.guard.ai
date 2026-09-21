@@ -12,7 +12,11 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 SESSION_FILE = Path(__file__).resolve().parent / "session.json"
-BACKEND_URL = "http://localhost:8000/api/v1"
+try:
+    from config import BACKEND_HTTP_URL
+    BACKEND_URL = BACKEND_HTTP_URL
+except Exception:
+    BACKEND_URL = os.getenv("LAPTOPGUARD_API_URL", "https://laptopguard-api.onrender.com/api/v1")
 
 class ModernAgentGUI:
     def __init__(
