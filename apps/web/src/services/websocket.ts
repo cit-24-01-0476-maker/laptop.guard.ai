@@ -29,11 +29,10 @@ class RealtimeHubService {
       if (isDevPort || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         wsUrl = `ws://${window.location.hostname}:8000/ws/client/${userId}`;
       } else {
-        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        wsUrl = `${proto}//${window.location.host}/ws/client/${userId}`;
+        wsUrl = `wss://laptopguard-api.onrender.com/ws/client/${userId}`;
       }
     } else {
-      wsUrl = `ws://localhost:8000/ws/client/${userId}`;
+      wsUrl = `wss://laptopguard-api.onrender.com/ws/client/${userId}`;
     }
 
     try {

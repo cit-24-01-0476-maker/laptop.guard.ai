@@ -17,14 +17,20 @@ export const getApiBaseUrl = (): string => {
     if (isDevPort || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return `http://${window.location.hostname}:8000/api/v1`;
     }
-    return `${window.location.origin}/api/v1`;
+    // Production Cloud Backend fallback
+    return 'https://laptopguard-api.onrender.com/api/v1';
   }
-  return 'http://localhost:8000/api/v1';
+  return 'https://laptopguard-api.onrender.com/api/v1';
 };
 
 export const getDownloadUrl = (endpoint: string): string => {
+  const clean = endpoint.replace(/^\//, '');
+  if (clean === 'windows-exe') {
+    // Deliver the official binary directly from the high-speed GitHub Release CDN
+    return 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.exe';
+  }
   const base = getApiBaseUrl().replace(/\/api\/v1$/, '');
-  return `${base}/api/v1/downloads/${endpoint.replace(/^\//, '')}`;
+  return `${base}/api/v1/downloads/${clean}`;
 };
 
 export const getCameraStreamUrl = (deviceId: string): string => {
