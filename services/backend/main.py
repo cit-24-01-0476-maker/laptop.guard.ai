@@ -66,6 +66,53 @@ def health_check():
         "connected_clients_count": sum(len(c) for c in hub.active_clients.values())
     }
 
+@app.on_event("startup")
+def on_startup():
+    """Ensure database has default demo owner and devices on fresh deployments."""
+    try:
+        from services.backend.auth import get_password_hash
+        db: Session = next(get_db())
+        user = db.query(models.User).filter(models.User.email == "oska@laptopguard.ai").first()
+        if not user:
+            user = models.User(
+                id="usr_owner_demo",
+                email="oska@laptopguard.ai",
+                password_hash=get_password_hash("SecurityPass2026!"),
+                full_name="Oska Perera",
+                role="owner",
+                two_factor_enabled=True,
+                created_at=models.datetime.datetime.utcnow()
+            )
+            db.add(user)
+            db.commit()
+            logger.info("Initialized default demo owner: oska@laptopguard.ai")
+
+        device = db.query(models.Device).filter(models.Device.id == "dev_oska_xps15").first()
+        if not device:
+            device = models.Device(
+                id="dev_oska_xps15",
+                user_id=user.id,
+                device_name="Dell G15 Sentinel",
+                device_type="laptop",
+                manufacturer="Dell Inc.",
+                model="G15 5530",
+                os="Windows",
+                os_version="11 Home",
+                agent_version="1.4.2",
+                device_public_key="ed25519_pk_default",
+                is_paired=True,
+                status="Protected",
+                security_mode="Balanced",
+                battery=100,
+                is_charging=True,
+                last_seen=models.datetime.datetime.utcnow()
+            )
+            db.add(device)
+            db.commit()
+            logger.info("Initialized default device: dev_oska_xps15")
+    except Exception as e:
+        logger.error(f"Startup seed error: {e}")
+
 # =============================================================================
 # WebSockets: Real-Time Communication & WebRTC Signaling
 # =============================================================================
@@ -76,8 +123,31 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
     db: Session = next(get_db())
     device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if not device:
-        await websocket.close(code=4004, reason="Device not found")
-        return
+        # Auto-provision new hardware agent for zero-config pairing
+        first_user = db.query(models.User).first()
+        owner_id = first_user.id if first_user else "usr_owner_demo"
+        device = models.Device(
+            id=device_id,
+            user_id=owner_id,
+            device_name="Dell G15 Sentinel",
+            device_type="laptop",
+            manufacturer="Dell Inc.",
+            model="G15 5530",
+            os="Windows",
+            os_version="11 Home",
+            agent_version="1.4.2",
+            device_public_key="ed25519_pk_auto",
+            is_paired=True,
+            status="Protected",
+            security_mode="Balanced",
+            battery=100,
+            is_charging=True,
+            last_seen=models.datetime.datetime.utcnow()
+        )
+        db.add(device)
+        db.commit()
+        db.refresh(device)
+        logger.info(f"Auto-provisioned device {device_id} to user {owner_id}")
 
     await hub.register_device(device_id, device.user_id, websocket)
     try:
