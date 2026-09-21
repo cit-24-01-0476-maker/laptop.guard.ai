@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller & Large Binaries
+build/
+dist/
+*.spec
+*.exe
+
+# Node & Frontend
+node_modules/
+apps/web/node_modules/
+apps/web/dist/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Databases & Runtime State
+*.db
+*.sqlite3
+database/*.db
+session.json
+device_identity.json
+*.enc.json
+evidence_vault/*
+!evidence_vault/.gitkeep
+
+# IDEs & System
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
