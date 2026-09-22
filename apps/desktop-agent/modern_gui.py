@@ -203,22 +203,22 @@ class ModernAgentGUI:
 
         # Email Input
         ctk.CTkLabel(form_frame, text="Email Address", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(0, 4))
-        email_entry = ctk.CTkEntry(form_frame, placeholder_text="e.g. oska@laptopguard.ai", width=400, height=42, corner_radius=12)
+        email_entry = ctk.CTkEntry(form_frame, placeholder_text="e.g. user@gmail.com", width=400, height=42, corner_radius=12)
         email_entry.pack(pady=(0, 15))
-        email_entry.insert(0, "oska@laptopguard.ai")
+        if getattr(self, "user_email", None):
+            email_entry.insert(0, self.user_email)
 
         # Password Input
         ctk.CTkLabel(form_frame, text="Master Password", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(0, 4))
-        password_entry = ctk.CTkEntry(form_frame, placeholder_text="••••••••", show="*", width=400, height=42, corner_radius=12)
+        password_entry = ctk.CTkEntry(form_frame, placeholder_text="Enter your password", show="*", width=400, height=42, corner_radius=12)
         password_entry.pack(pady=(0, 20))
-        password_entry.insert(0, "password123")
 
         status_msg = ctk.CTkLabel(form_frame, text="", font=ctk.CTkFont(size=11, weight="bold"), text_color="#EF4444")
         status_msg.pack(pady=(0, 10))
 
         # Sign In Action
         def do_login(is_register=False):
-            email = email_entry.get().strip()
+            email = email_entry.get().strip().lower()
             pw = password_entry.get().strip()
             if not email or not pw:
                 status_msg.configure(text="Please enter email and password.")

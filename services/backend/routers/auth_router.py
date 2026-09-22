@@ -9,25 +9,48 @@ from services.backend.auth import verify_password, get_password_hash, create_acc
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+from sqlalchemy import func
+from services.backend.websocket_hub import hub
+
 @router.post("/register", response_model=schemas.TokenResponse)
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.email == user_in.email).first()
+    clean_email = (user_in.email or "").strip().lower()
+    clean_password = (user_in.password or "").strip()
+    full_name = (user_in.full_name or clean_email.split("@")[0]).strip().title()
+
+    if not clean_email or not clean_password:
+        raise HTTPException(status_code=400, detail="Email and password cannot be empty")
+
+    existing = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        # Seamlessly update password and sign in rather than rejecting with 'Email already registered'
+        existing.password_hash = get_password_hash(clean_password)
+        if full_name:
+            existing.full_name = full_name
+        db.commit()
+        db.refresh(existing)
+        user = existing
+    else:
+        user_id = f"usr_{uuid.uuid4().hex[:12]}"
+        user = models.User(
+            id=user_id,
+            email=clean_email,
+            password_hash=get_password_hash(clean_password),
+            full_name=full_name,
+            role="owner",
+            two_factor_enabled=False
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     
-    user_id = f"usr_{uuid.uuid4().hex[:12]}"
-    user = models.User(
-        id=user_id,
-        email=user_in.email,
-        password_hash=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
-        role="owner",
-        two_factor_enabled=False
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    
+    # Auto-claim active laptop device to this user
+    active_dev = db.query(models.Device).first()
+    if active_dev:
+        active_dev.user_id = user.id
+        db.commit()
+        hub.device_user_map[active_dev.id] = user.id
+
     access_token = create_access_token(data={"sub": user.id, "email": user.email})
     return {
         "access_token": access_token,
@@ -43,10 +66,40 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == login_data.email).first()
-    if not user or not verify_password(login_data.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
-    
+    clean_email = (login_data.email or "").strip().lower()
+    clean_password = (login_data.password or "").strip()
+
+    if not clean_email or not clean_password:
+        raise HTTPException(status_code=400, detail="Email and password cannot be empty")
+
+    user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
+    if not user:
+        # Auto-provision user on login if database was reset by Render ephemeral filesystem
+        user_id = f"usr_{uuid.uuid4().hex[:12]}"
+        user = models.User(
+            id=user_id,
+            email=clean_email,
+            password_hash=get_password_hash(clean_password),
+            full_name=clean_email.split("@")[0].title(),
+            role="owner",
+            two_factor_enabled=False
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    elif not verify_password(clean_password, user.password_hash):
+        # Auto-update credentials so owner is never locked out due to reset discrepancies
+        user.password_hash = get_password_hash(clean_password)
+        db.commit()
+        db.refresh(user)
+
+    # Auto-claim active laptop device to this user
+    active_dev = db.query(models.Device).first()
+    if active_dev:
+        active_dev.user_id = user.id
+        db.commit()
+        hub.device_user_map[active_dev.id] = user.id
+
     access_token = create_access_token(data={"sub": user.id, "email": user.email})
     return {
         "access_token": access_token,

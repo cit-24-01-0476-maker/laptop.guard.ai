@@ -14,8 +14,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const { loginUser } = useSecurity();
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('oska@laptopguard.ai');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState(() => localStorage.getItem('laptopguard_last_email') || '');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -24,17 +24,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      setErrorMsg('Please enter both email and password.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       let res;
       if (isRegister) {
-        res = await api.register(email, password, fullName || email.split('@')[0]);
+        res = await api.register(cleanEmail, cleanPassword, (fullName || cleanEmail.split('@')[0]).trim());
       } else {
-        res = await api.login(email, password);
+        res = await api.login(cleanEmail, cleanPassword);
       }
 
       if (res && res.access_token) {
+        localStorage.setItem('laptopguard_last_email', cleanEmail);
         loginUser(res.user, res.access_token);
         onSuccess(res.user);
         onClose();
