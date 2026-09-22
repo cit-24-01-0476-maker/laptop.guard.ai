@@ -8,7 +8,7 @@ from services.backend.database import get_db
 from services.backend import models, schemas
 from services.backend.auth import get_current_user
 from services.backend.websocket_hub import hub
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 
 router = APIRouter(prefix="/camera", tags=["Live Camera"])
 
