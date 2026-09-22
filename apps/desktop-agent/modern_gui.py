@@ -171,8 +171,8 @@ class ModernAgentGUI:
 
     def _on_close(self):
         if self.root:
-            self.root.destroy()
-            sys.exit(0)
+            # Minimize to taskbar instead of quitting so security protection stays alive in background!
+            self.root.iconify()
 
     # -------------------------------------------------------------
     # LOGIN & REGISTRATION VIEW
