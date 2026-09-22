@@ -55,6 +55,7 @@ app.include_router(evidence_router.router, prefix=settings.API_V1_STR)
 app.include_router(privacy_router.router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router.router, prefix=settings.API_V1_STR)
 app.include_router(downloads_router.router)
+app.include_router(downloads_router.alias_router)
 
 @app.get("/api/health")
 def health_check():

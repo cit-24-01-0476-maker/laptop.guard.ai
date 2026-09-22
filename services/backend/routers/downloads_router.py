@@ -157,3 +157,11 @@ async def download_android_apk():
             "Content-Disposition": f"attachment; filename=LaptopGuard-AI-Mobile-v{CURRENT_VERSION}.apk"
         }
     )
+
+
+# Root alias router for /downloads/*
+alias_router = APIRouter(prefix="/downloads", tags=["Downloads & Updates"])
+alias_router.add_api_route("/manifest", get_version_manifest, methods=["GET"])
+alias_router.add_api_route("/windows-agent", download_windows_agent, methods=["GET"])
+alias_router.add_api_route("/windows-exe", download_windows_exe, methods=["GET"])
+alias_router.add_api_route("/android-apk", download_android_apk, methods=["GET"])
