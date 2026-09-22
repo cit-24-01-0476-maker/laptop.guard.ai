@@ -15,7 +15,7 @@ def generate_command_envelope(command_type: str, device_id: str, user_id: str, p
     command_id = f"cmd_{uuid.uuid4().hex[:12]}"
     nonce = uuid.uuid4().hex
     now = int(time.time())
-    expires_at = now + 60  # Commands expire in 60 seconds to prevent replay attacks
+    expires_at = now + 300  # Commands valid for 5 minutes with clock drift tolerance
     
     data_to_sign = f"{command_id}:{command_type}:{device_id}:{user_id}:{nonce}:{expires_at}:{json.dumps(payload, sort_keys=True)}"
     signature = hmac.new(SECRET_SIGNING_KEY, data_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -35,7 +35,8 @@ def generate_command_envelope(command_type: str, device_id: str, user_id: str, p
 def verify_command_envelope(envelope: Dict[str, Any]) -> Tuple[bool, str]:
     """Verifies that the command envelope is genuine, not expired, and not tampered with."""
     now = int(time.time())
-    if envelope.get("expires_at", 0) < now:
+    expires_at = envelope.get("expires_at")
+    if expires_at and expires_at < (now - 300):
         return False, "Command has expired"
     
     command_id = envelope.get("command_id", "")

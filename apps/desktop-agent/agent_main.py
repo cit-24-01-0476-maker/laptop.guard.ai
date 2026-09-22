@@ -215,36 +215,36 @@ class LaptopSecurityAgent:
         logger.info(f"Executing verified command: {cmd_type} (ID: {cmd_id})")
         self.gui.log_event(f"Executing verified remote command: {cmd_type}")
 
-        if cmd_type == "LOCK_DEVICE":
+        if cmd_type in ("LOCK_DEVICE", "LOCK"):
             success = lock_workstation()
             await self._report_command_result(cmd_id, "EXECUTED" if success else "FAILED")
             self.on_security_event("REMOTE_LOCK", "INFO", {"message": "Remote lock executed successfully."})
 
-        elif cmd_type == "PLAY_ALARM":
+        elif cmd_type in ("PLAY_ALARM", "TRIGGER_ALARM", "ALARM", "SOUND_ALARM", "START_ALARM"):
             alarm_controller.start_alarm()
             await self._report_command_result(cmd_id, "EXECUTED")
             self.on_security_event("ALARM_TRIGGERED", "CRITICAL", {"message": "Remote deterrence siren sounded."})
 
-        elif cmd_type == "STOP_ALARM":
+        elif cmd_type in ("STOP_ALARM", "SILENCE_ALARM", "SILENCE", "CANCEL_ALARM"):
             alarm_controller.stop_alarm()
             await self._report_command_result(cmd_id, "EXECUTED")
 
-        elif cmd_type == "ARM_DEVICE":
+        elif cmd_type in ("ARM_DEVICE", "ARM"):
             self.arm_device()
             await self._report_command_result(cmd_id, "EXECUTED")
 
-        elif cmd_type == "DISARM_DEVICE":
+        elif cmd_type in ("DISARM_DEVICE", "DISARM"):
             self.disarm_device()
             await self._report_command_result(cmd_id, "EXECUTED")
 
-        elif cmd_type == "ENABLE_LOST_MODE":
+        elif cmd_type in ("ENABLE_LOST_MODE", "LOST_MODE"):
             self.is_armed = True
             self.gui.log_event("LOST MODE ACTIVATED REMOTELY!")
             alarm_controller.start_alarm()
             await self._report_command_result(cmd_id, "EXECUTED")
             self.on_security_event("LOST_MODE_ENABLED", "CRITICAL", {"message": "Lost Mode activated by owner."})
 
-        elif cmd_type == "TAKE_SECURITY_SNAPSHOT":
+        elif cmd_type in ("TAKE_SECURITY_SNAPSHOT", "SNAPSHOT", "SECURITY_SNAPSHOT"):
             evi_id = take_security_snapshot(BACKEND_HTTP_URL, self.device_id, "REMOTE_COMMAND")
             await self._report_command_result(cmd_id, "EXECUTED" if evi_id else "FAILED")
 
