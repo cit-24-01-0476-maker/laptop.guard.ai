@@ -178,8 +178,17 @@ class ModernAgentGUI:
     # LOGIN & REGISTRATION VIEW
     # -------------------------------------------------------------
     def _render_login_screen(self):
+        self.events_box = None
+        self.battery_label = None
+        self.charging_label = None
+        self.ssid_label = None
+        self.power_btn = None
+        self.big_power_btn = None
         for widget in self.body.winfo_children():
-            widget.destroy()
+            try:
+                widget.destroy()
+            except Exception:
+                pass
 
         login_card = ctk.CTkFrame(self.body, corner_radius=24, fg_color=("#F8FAFC", "#111827"), border_width=1, border_color="#1E293B")
         login_card.pack(expand=True, padx=40, pady=30, fill="both")
@@ -251,10 +260,15 @@ class ModernAgentGUI:
                         except Exception:
                             pass
 
-                        if self.on_authenticated:
-                            self.on_authenticated(user.get("id"), token)
-
+                        # Render dashboard FIRST on main thread
                         self.root.after(0, self._render_dashboard)
+
+                        # Notify authenticated callback safely
+                        if self.on_authenticated:
+                            try:
+                                self.on_authenticated(user.get("id"), token)
+                            except Exception as ex_auth:
+                                logging.getLogger("LaptopGuard.GUI").error(f"Callback on_authenticated error: {ex_auth}")
                     else:
                         err_detail = res.json().get("detail", "Authentication failed.")
                         self.root.after(0, lambda: status_msg.configure(text=str(err_detail), text_color="#EF4444"))
@@ -506,10 +520,20 @@ class ModernAgentGUI:
         self.log_event("Hardware sentinel initialized. Armed and active.")
 
     def log_event(self, message: str):
-        if self.events_box:
-            timestamp = time.strftime("%H:%M:%S")
-            self.events_box.insert("end", f"[{timestamp}] {message}\n")
-            self.events_box.see("end")
+        def _do_log():
+            try:
+                if self.events_box and self.events_box.winfo_exists():
+                    timestamp = time.strftime("%H:%M:%S")
+                    self.events_box.insert("end", f"[{timestamp}] {message}\n")
+                    self.events_box.see("end")
+            except Exception:
+                pass
+
+        if getattr(self, "root", None):
+            try:
+                self.root.after(0, _do_log)
+            except Exception:
+                pass
 
     def update_telemetry(self, battery: int, is_charging: bool, ssid: str, is_armed: bool):
         self.battery_pct = battery

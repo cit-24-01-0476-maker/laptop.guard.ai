@@ -92,7 +92,10 @@ class LaptopGuardDesktopApp:
 
     def _on_user_authenticated(self, user_id: str, token: str):
         logger.info(f"User authenticated on desktop: {user_id}")
-        self.gui.log_event(f"Linked to account {self.gui.user_email}.")
+        try:
+            self.gui.log_event(f"Linked to account {self.gui.user_email}.")
+        except Exception:
+            pass
         if self.ws and self.loop:
             try:
                 asyncio.run_coroutine_threadsafe(self.ws.close(), self.loop)
