@@ -119,11 +119,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigateHome, onN
         {onNavigateMobile && (
           <button
             onClick={onNavigateMobile}
-            className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 rounded-2xl bg-white/80 hover:bg-white text-slate-700 text-xs font-bold border border-slate-200/80 shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200/80 shadow-sm cursor-pointer transition-all"
             title="Open Phone Controller View"
           >
             <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Phone Remote</span>
+            <span className="hidden sm:inline">Phone Remote</span>
+            <span className="sm:hidden">App</span>
           </button>
         )}
 

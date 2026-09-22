@@ -49,6 +49,25 @@ export const AppContent: React.FC = () => {
     setCurrentView('landing');
   };
 
+  // Auto-detect mobile devices or direct mobile links (#mobile or ?view=mobile)
+  useEffect(() => {
+    const hash = window.location.hash;
+    const searchParams = new URLSearchParams(window.location.search);
+    const wantsMobile = hash === '#mobile' || searchParams.get('view') === 'mobile';
+    const isMobileDevice = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (wantsMobile) {
+      if (isAuthenticated) {
+        setCurrentView('mobile');
+      } else {
+        setPendingTargetView('mobile');
+        setIsAuthModalOpen(true);
+      }
+    } else if (isMobileDevice && isAuthenticated && currentView === 'landing') {
+      setCurrentView('mobile');
+    }
+  }, [isAuthenticated]);
+
   // Enforce auth: If not authenticated and trying to view a protected view, redirect to landing & prompt login
   useEffect(() => {
     if (!isAuthenticated && currentView !== 'landing') {

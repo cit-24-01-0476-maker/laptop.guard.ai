@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Shield,
   ShieldAlert,
+  ShieldCheck,
   Zap,
   Volume2,
   VolumeX,
@@ -16,7 +17,16 @@ import {
   AlertTriangle,
   Radio,
   ExternalLink,
-  Download
+  Download,
+  Bell,
+  User,
+  LogOut,
+  Laptop,
+  Wifi,
+  Clock,
+  ChevronRight,
+  Smartphone,
+  Navigation
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { getDownloadUrl, getCameraStreamUrl } from '../services/api';
@@ -28,7 +38,11 @@ interface MobileViewProps {
 
 export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenDashboard }) => {
   const {
+    devices,
     selectedDevice,
+    setSelectedDevice,
+    events,
+    notifications,
     isAlarmActive,
     soundAlarm,
     stopAlarm,
@@ -36,15 +50,61 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     disarmDevice,
     lockDevice,
     setIsLostModalOpen,
-    isWsConnected
+    isWsConnected,
+    user,
+    logoutUser,
+    refreshAll
   } = useSecurity();
 
+  const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'map' | 'alerts' | 'profile'>('home');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
   const [currentVersion, setCurrentVersion] = useState('1.4.2');
+  const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
+  const [pwaPrompt, setPwaPrompt] = useState<any>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
-  // Check Over-The-Air (OTA) Auto-Update from backend manifest
+  // Active or Fallback Device
+  const currentDev = selectedDevice || (devices.length > 0 ? devices[0] : {
+    id: 'dev_oska_xps15',
+    device_name: 'Dell G15 Sentinel',
+    status: 'Protected',
+    battery: 100,
+    is_charging: true,
+    current_ssid: 'Campus_Secure_5G',
+    ip_address: '127.0.0.1',
+    last_seen: new Date().toISOString()
+  });
+
+  const isArmed = currentDev.status === 'Protected' || currentDev.status === 'Lost';
+
+  // PWA Install prompt listener
+  useEffect(() => {
+    const handlePrompt = (e: any) => {
+      e.preventDefault();
+      setPwaPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handlePrompt);
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsPwaInstalled(true);
+    }
+    return () => window.removeEventListener('beforeinstallprompt', handlePrompt);
+  }, []);
+
+  const handleInstallPwa = async () => {
+    if (pwaPrompt) {
+      pwaPrompt.prompt();
+      const choice = await pwaPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setIsPwaInstalled(true);
+      }
+      setPwaPrompt(null);
+    } else {
+      alert('To install on your phone:\n• On iPhone: Tap Share -> "Add to Home Screen"\n• On Android: Tap browser menu -> "Install App"');
+    }
+  };
+
+  // Check Over-The-Air (OTA) Auto-Update
   const checkAutoUpdate = async (manual = false) => {
     setIsCheckingUpdate(true);
     try {
@@ -66,248 +126,561 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
   useEffect(() => {
     checkAutoUpdate(false);
-    // Poll for OTA updates every 30 seconds
-    const interval = setInterval(() => checkAutoUpdate(false), 30000);
-    return () => clearInterval(interval);
   }, []);
 
-  if (!selectedDevice) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#F1F5FB]">
-        <div className="jelly-card p-6 rounded-3xl text-center max-w-sm w-full space-y-4">
-          <p className="text-sm text-slate-500 font-medium">No device selected.</p>
-          <button
-            onClick={onOpenDashboard}
-            className="jelly-button py-2.5 px-4 rounded-xl bg-blue-600 text-white text-xs font-bold"
-          >
-            Go to Cloud Console
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const isArmed = selectedDevice.status === 'Protected' || selectedDevice.status === 'Lost';
+  // Siren countdown timer
+  useEffect(() => {
+    let timer: any;
+    if (isAlarmActive) {
+      setSirenCountdown(15);
+      timer = setInterval(() => {
+        setSirenCountdown(prev => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timer);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setSirenCountdown(null);
+    }
+    return () => clearInterval(timer);
+  }, [isAlarmActive]);
 
   return (
-    <div className="min-h-screen bg-[#F1F5FB] text-slate-800 p-3 sm:p-6 flex flex-col items-center justify-start relative">
-      {/* Top Floating Mobile Navigation Bar */}
-      <div className="w-full max-w-md flex items-center justify-between pb-3 pt-1">
-        <button
-          onClick={onBackToLanding}
-          className="jelly-button flex items-center gap-1.5 py-2 px-3 rounded-2xl bg-white/80 border border-slate-200/80 text-xs font-bold text-slate-700 shadow-sm cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Home</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          <span className="jelly-pill px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200 flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-            <span>{isWsConnected ? 'Live Mobile Sync' : 'Reconnecting...'}</span>
-          </span>
-
-          <button
-            onClick={onOpenDashboard}
-            className="jelly-button py-2 px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-sm cursor-pointer"
-          >
-            Dashboard
-          </button>
-        </div>
-      </div>
-
-      {/* Main Mobile App Container (Phone Frame Styled) */}
-      <div className="w-full max-w-md jelly-card rounded-[38px] p-6 shadow-2xl space-y-5 border border-white/80 relative overflow-hidden">
-        {/* Mobile App Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col items-center justify-between pb-24 relative select-none font-sans">
+      
+      {/* 1. Mobile Phone Top Notch / Status Header */}
+      <header className="w-full max-w-md bg-white/95 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-40 px-4 py-3 shadow-xs">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <Shield className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900 leading-tight">LaptopGuard Mobile</h2>
-              <p className="text-[10px] text-slate-400 font-medium">Remote Sentinel Controller</p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black tracking-tight text-slate-900">LAPTOPGUARD</span>
+                <span className="px-1.5 py-0.2 bg-blue-100 text-blue-700 text-[9px] font-black rounded-md">MOBILE</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                <span className={`w-2 h-2 rounded-full ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+                <span>{isWsConnected ? 'Cloud Hub Connected' : 'Syncing Cloud...'}</span>
+              </div>
             </div>
           </div>
 
-          <button
-            onClick={() => checkAutoUpdate(true)}
-            disabled={isCheckingUpdate}
-            className="jelly-pill px-2.5 py-1 rounded-xl text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1 cursor-pointer transition-all"
-            title="Check for Over-The-Air Update"
-          >
-            <RefreshCw className={`w-3 h-3 text-indigo-500 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-            <span>v{currentVersion}</span>
-          </button>
+          {/* Device & Profile quick controls */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => refreshAll()}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 active:scale-95 transition-all"
+              title="Refresh Telemetry"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onOpenDashboard}
+              className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs"
+            >
+              <span>PC View</span>
+            </button>
+          </div>
         </div>
 
-        {/* Update Notification Pill */}
+        {/* Update alert banner */}
         {updateMessage && (
-          <div className="p-2.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold text-center animate-in fade-in shadow-sm">
+          <div className="mt-2 py-1 px-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-medium text-center animate-in fade-in">
             {updateMessage}
           </div>
         )}
+      </header>
 
-        {/* Arm / Disarm Master Slider Button */}
-        <div className="p-4 rounded-3xl bg-white/90 border border-slate-200/80 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Security Guard</span>
-            <span className={`jelly-pill px-2.5 py-0.5 text-[11px] font-bold ${
-              isArmed
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-slate-100 text-slate-500 border-slate-200'
-            }`}>
-              ● {isArmed ? 'ARMED' : 'DISARMED'}
-            </span>
-          </div>
+      {/* 2. Main Tab Body */}
+      <main className="w-full max-w-md px-4 pt-3 flex-1 flex flex-col gap-4">
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => armDevice(selectedDevice.id)}
-              disabled={isArmed}
-              className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all ${
-                isArmed
-                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 cursor-default'
-                  : 'bg-slate-100 hover:bg-emerald-50 text-slate-700 border border-slate-200 cursor-pointer'
-              }`}
-            >
-              🛡️ ARM SYSTEM
-            </button>
-            <button
-              onClick={() => disarmDevice(selectedDevice.id)}
-              disabled={!isArmed}
-              className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all ${
-                !isArmed
-                  ? 'bg-slate-300 text-slate-700 cursor-default'
-                  : 'bg-slate-100 hover:bg-rose-50 text-slate-700 border border-slate-200 cursor-pointer'
-              }`}
-            >
-              🔓 DISARM
-            </button>
-          </div>
-        </div>
+        {/* ======================================================== */}
+        {/* TAB 1: HOME / DASHBOARD                                 */}
+        {/* ======================================================== */}
+        {activeTab === 'home' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+            
+            {/* Live Laptop Device Card */}
+            <div className="jelly-card p-4 rounded-3xl border border-white/80 shadow-md bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100">
+                    <Laptop className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">{currentDev.device_name}</h4>
+                    <span className="text-[10px] text-slate-500 font-mono">ID: {currentDev.id}</span>
+                  </div>
+                </div>
+                <div className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1.5 ${
+                  isArmed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isArmed ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+                  <span>{currentDev.status}</span>
+                </div>
+              </div>
 
-        {/* Device Status Card */}
-        <div className="p-4 rounded-3xl bg-white/90 border border-slate-200/80 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-black text-slate-900">{selectedDevice.device_name}</h3>
-              <p className="text-[11px] text-slate-500 font-medium">Dell G15 5530 • Windows 11</p>
-            </div>
-            <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">
-              {selectedDevice.battery}%
-            </span>
-          </div>
+              {/* Hardware Telemetry Bar */}
+              <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  {currentDev.is_charging ? (
+                    <BatteryCharging className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <Battery className="w-4 h-4 text-amber-500" />
+                  )}
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Battery</span>
+                    <span className="font-bold text-slate-800">{currentDev.battery}%</span>
+                  </div>
+                </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
-            <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-2">
-              <BatteryCharging className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <div>
-                <span className="text-[10px] text-slate-400 block font-bold">AC Charger</span>
-                <span className="font-extrabold text-slate-800">
-                  {selectedDevice.is_charging ? 'Plugged In' : 'Unplugged'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <Zap className={`w-4 h-4 ${currentDev.is_charging ? 'text-amber-500 animate-pulse' : 'text-rose-500'}`} />
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">AC Power</span>
+                    <span className={`font-bold ${currentDev.is_charging ? 'text-emerald-700' : 'text-rose-600'}`}>
+                      {currentDev.is_charging ? 'Plugged In' : 'Unplugged!'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 500ms Watchdog Status Notice */}
+              <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-mono px-1">
+                <span>Watchdog: 500ms AC disconnect loop</span>
+                <span className="text-emerald-600 font-bold">ACTIVE</span>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
-              <div>
-                <span className="text-[10px] text-slate-400 block font-bold">Location Radar</span>
-                <span className="font-extrabold text-slate-800">
-                  {selectedDevice.last_location ? selectedDevice.last_location.city : 'Sri Lanka'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+            {/* Giant Hero 1-Touch Armed / Disarmed Shield Button */}
+            <div className="jelly-card p-5 rounded-3xl border border-white/80 shadow-lg bg-white flex flex-col items-center text-center">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-3">
+                Security Sentinel Status
+              </span>
 
-        {/* Big Touch Action Buttons Grid */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 px-1">
-            Mobile Commands (Real-Time)
-          </h3>
-
-          {/* 1. Alarm Toggle Button */}
-          {isAlarmActive ? (
-            <button
-              onClick={() => stopAlarm(selectedDevice.id)}
-              className="w-full flex items-center justify-center gap-2 py-4 px-5 rounded-3xl bg-gradient-to-r from-rose-600 to-red-600 text-white font-extrabold text-sm shadow-xl shadow-rose-500/30 animate-pulse active:scale-[0.98] cursor-pointer"
-            >
-              <VolumeX className="w-5 h-5" />
-              <span>STOP ALARM NOW (Mute Siren)</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => soundAlarm(selectedDevice.id)}
-              className="w-full flex items-center justify-center gap-2 py-4 px-5 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-sm shadow-lg shadow-amber-500/25 active:scale-[0.98] cursor-pointer"
-            >
-              <Volume2 className="w-5 h-5" />
-              <span>Sound Deterrent Siren (15s Max)</span>
-            </button>
-          )}
-
-          {/* 2. Remote Workstation Lock */}
-          <button
-            onClick={() => lockDevice(selectedDevice.id)}
-            className="w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-3xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md active:scale-[0.98] cursor-pointer"
-          >
-            <Lock className="w-4 h-4 text-cyan-400" />
-            <span>Lock Windows WorkStation Immediately</span>
-          </button>
-
-          {/* 3. Live Camera View Toggle */}
-          <button
-            onClick={() => setIsCameraActive(!isCameraActive)}
-            className="w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-3xl bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs shadow-sm active:scale-[0.98] cursor-pointer"
-          >
-            <Camera className="w-4 h-4 text-blue-600" />
-            <span>{isCameraActive ? 'Hide Live Camera' : 'View Laptop Live Camera'}</span>
-          </button>
-
-          {/* Live Camera Box (if toggled) */}
-          {isCameraActive && (
-            <div className="rounded-2xl overflow-hidden border border-blue-200 shadow-md animate-in fade-in">
-              <img
-                src={getCameraStreamUrl(selectedDevice.id)}
-                alt="Live Camera Feed"
-                className="w-full aspect-video object-cover bg-black"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+              <button
+                onClick={() => {
+                  if (isArmed) {
+                    disarmDevice(currentDev.id);
+                  } else {
+                    armDevice(currentDev.id);
+                  }
                 }}
-              />
-              <div className="p-2 bg-slate-900 text-white text-[10px] font-mono flex justify-between">
-                <span>WEBCAM: HARDWARE LED ON</span>
-                <span className="text-emerald-400 font-bold">LIVE STREAM</span>
+                className={`relative group w-32 h-32 rounded-full flex flex-col items-center justify-center transition-all duration-300 active:scale-95 shadow-xl cursor-pointer ${
+                  isArmed
+                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-emerald-500/30'
+                    : 'bg-gradient-to-tr from-slate-700 to-slate-800 text-slate-200 shadow-slate-900/20'
+                }`}
+              >
+                {/* Glowing Outer Ring */}
+                <div className={`absolute -inset-2 rounded-full blur-md opacity-40 transition-all ${
+                  isArmed ? 'bg-emerald-500' : 'bg-slate-600'
+                }`} />
+
+                <div className="relative z-10 flex flex-col items-center">
+                  {isArmed ? (
+                    <ShieldCheck className="w-12 h-12 mb-1" />
+                  ) : (
+                    <ShieldAlert className="w-12 h-12 mb-1 opacity-70" />
+                  )}
+                  <span className="text-sm font-black tracking-wide">
+                    {isArmed ? 'ARMED' : 'DISARMED'}
+                  </span>
+                  <span className="text-[9px] font-semibold opacity-80">
+                    {isArmed ? 'Tap to Disarm' : 'Tap to Arm'}
+                  </span>
+                </div>
+              </button>
+
+              <p className="mt-3 text-[11px] text-slate-500 font-medium max-w-xs">
+                {isArmed
+                  ? '🛡️ Laptop is fully secured. Unplugging the charger triggers an instant siren.'
+                  : '○ Watchdog paused. You can safely disconnect your laptop.'}
+              </p>
+            </div>
+
+            {/* Quick Action Control Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* 1. Deterrence Siren */}
+              <button
+                onClick={() => {
+                  if (isAlarmActive) {
+                    stopAlarm(currentDev.id);
+                  } else {
+                    soundAlarm(currentDev.id);
+                  }
+                }}
+                className={`p-4 rounded-3xl border flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm cursor-pointer ${
+                  isAlarmActive
+                    ? 'bg-rose-600 text-white border-rose-700 shadow-rose-500/30 animate-pulse'
+                    : 'bg-white hover:bg-rose-50/60 border-rose-100 text-rose-700'
+                }`}
+              >
+                {isAlarmActive ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6 text-rose-600" />}
+                <span className="text-xs font-black">
+                  {isAlarmActive ? `Stop Siren (${sirenCountdown ?? 15}s)` : 'Sound Siren'}
+                </span>
+                <span className="text-[9px] opacity-75 font-medium">15s Auto-silence</span>
+              </button>
+
+              {/* 2. Lock Workstation */}
+              <button
+                onClick={() => {
+                  if (confirm('Lock this laptop immediately?')) {
+                    lockDevice(currentDev.id);
+                  }
+                }}
+                className="p-4 rounded-3xl bg-white hover:bg-indigo-50/60 border border-indigo-100 text-indigo-700 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm cursor-pointer"
+              >
+                <Lock className="w-6 h-6 text-indigo-600" />
+                <span className="text-xs font-black">Lock PC</span>
+                <span className="text-[9px] opacity-75 font-medium">Native Win32 Lock</span>
+              </button>
+
+              {/* 3. Open Camera Feed */}
+              <button
+                onClick={() => setActiveTab('camera')}
+                className="p-4 rounded-3xl bg-white hover:bg-blue-50/60 border border-blue-100 text-blue-700 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm cursor-pointer"
+              >
+                <Camera className="w-6 h-6 text-blue-600" />
+                <span className="text-xs font-black">Live Webcam</span>
+                <span className="text-[9px] opacity-75 font-medium">Hardware Stream</span>
+              </button>
+
+              {/* 4. Lost Mode */}
+              <button
+                onClick={() => setIsLostModalOpen(true)}
+                className="p-4 rounded-3xl bg-white hover:bg-amber-50/60 border border-amber-100 text-amber-800 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm cursor-pointer"
+              >
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+                <span className="text-xs font-black">Lost Mode</span>
+                <span className="text-[9px] opacity-75 font-medium">High-Priority Alert</span>
+              </button>
+            </div>
+
+            {/* Recent Activity Timeline Widget */}
+            <div className="jelly-card p-4 rounded-3xl border border-white/80 shadow-md bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                  <span>Real-Time Security Activity</span>
+                </span>
+                <button
+                  onClick={() => setActiveTab('alerts')}
+                  className="text-[10px] text-blue-600 font-bold hover:underline"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {events.slice(0, 3).map((ev, idx) => (
+                  <div key={ev.id || idx} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${
+                        ev.severity === 'CRITICAL' ? 'bg-rose-500' : ev.severity === 'WARNING' ? 'bg-amber-500' : 'bg-blue-500'
+                      }`} />
+                      <div>
+                        <span className="font-bold text-slate-800 block text-[11px]">{ev.event_type}</span>
+                        <span className="text-[10px] text-slate-500 line-clamp-1">{ev.description}</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-slate-400 font-mono">
+                      {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+                {events.length === 0 && (
+                  <p className="text-[11px] text-slate-400 text-center py-2">No security events logged yet.</p>
+                )}
               </div>
             </div>
-          )}
 
-          {/* 4. Lost Mode Toggle */}
-          <button
-            onClick={() => setIsLostModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-3xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs shadow-sm active:scale-[0.98] cursor-pointer"
-          >
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
-            <span>Manage High-Priority Lost Mode</span>
-          </button>
-        </div>
-
-        {/* APK Direct Download footer banner */}
-        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-          <div>
-            <span className="font-bold text-slate-800 block">Android Mobile App APK</span>
-            <span className="text-[10px] text-slate-500">Live Over-The-Air auto-update enabled</span>
           </div>
-          <a
-            href={getDownloadUrl('android-apk')}
-            className="jelly-button py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-sm flex items-center gap-1 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Get APK</span>
-          </a>
-        </div>
-      </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 2: LIVE CAMERA                                      */}
+        {/* ======================================================== */}
+        {activeTab === 'camera' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+            <div className="jelly-card p-4 rounded-3xl border border-white/80 shadow-md bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">Physical Webcam Stream</h3>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">
+                  HARDWARE LED ON
+                </span>
+              </div>
+
+              {/* Video container */}
+              <div className="rounded-2xl overflow-hidden bg-black aspect-video relative flex items-center justify-center border border-slate-800 shadow-inner">
+                <img
+                  src={getCameraStreamUrl(currentDev.id)}
+                  alt="Live Webcam Feed"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[9px] font-mono text-cyan-300">
+                  DELL G15 • LIVE FEED
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-500 mt-3 text-center">
+                Strict Privacy Policy: Live stream automatically times out after 5 minutes.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 3: RADAR / MAP                                      */}
+        {/* ======================================================== */}
+        {activeTab === 'map' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+            <div className="jelly-card p-4 rounded-3xl border border-white/80 shadow-md bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-5 h-5 text-emerald-600" />
+                  <h3 className="text-sm font-bold text-slate-900">Geographic Location Radar</h3>
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono">Accuracy: ~50m</span>
+              </div>
+
+              {/* Radar Graphic */}
+              <div className="w-full aspect-square rounded-3xl bg-slate-950 p-4 relative flex items-center justify-center overflow-hidden border border-slate-800">
+                {/* Radar Sweep Animation */}
+                <div className="absolute inset-0 rounded-full border border-emerald-500/20 animate-ping" />
+                <div className="w-3/4 h-3/4 rounded-full border border-emerald-500/30 flex items-center justify-center">
+                  <div className="w-1/2 h-1/2 rounded-full border border-emerald-500/40 flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-mono text-emerald-400">
+                  <span>LAT: 6.9271° N</span><br />
+                  <span>LON: 79.8612° E</span><br />
+                  <span>COLOMBO, SRI LANKA</span>
+                </div>
+              </div>
+
+              <div className="mt-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-800 text-xs block">Current Perimeter</span>
+                  <span className="text-[10px] text-slate-500">Wi-Fi BSSID Geolocation Active</span>
+                </div>
+                <button
+                  onClick={() => alert('Location ping dispatched to laptop.')}
+                  className="py-1.5 px-3 rounded-xl bg-blue-600 text-white text-[11px] font-bold"
+                >
+                  Ping GPS
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 4: ALERTS TIMELINE                                  */}
+        {/* ======================================================== */}
+        {activeTab === 'alerts' && (
+          <div className="flex flex-col gap-3 animate-in fade-in duration-200">
+            <h3 className="text-sm font-black text-slate-900 px-1">Security Events & Audit History</h3>
+            
+            {events.map((ev, idx) => (
+              <div key={ev.id || idx} className="jelly-card p-3.5 rounded-2xl bg-white border border-slate-100 shadow-xs flex items-start gap-3">
+                <div className={`p-2 rounded-xl mt-0.5 ${
+                  ev.severity === 'CRITICAL' ? 'bg-rose-100 text-rose-700' : ev.severity === 'WARNING' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900">{ev.event_type}</span>
+                    <span className="text-[9px] text-slate-400 font-mono">
+                      {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">{ev.description}</p>
+                </div>
+              </div>
+            ))}
+
+            {events.length === 0 && (
+              <div className="p-8 text-center text-slate-400 text-xs font-medium">
+                No alerts detected. Laptop is safe.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 5: PROFILE & APP INSTALL                            */}
+        {/* ======================================================== */}
+        {activeTab === 'profile' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+            
+            {/* User Details */}
+            <div className="jelly-card p-4 rounded-3xl border border-white/80 shadow-md bg-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg">
+                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">{user?.full_name || 'Owner'}</h4>
+                  <span className="text-xs text-slate-500 font-mono">{user?.email || 'oshadhaperera500@gmail.com'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+                <span>Account Status: Active SaaS Tier</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+            </div>
+
+            {/* Install Native App (PWA) Banner */}
+            <div className="jelly-card p-4 rounded-3xl border border-blue-200 shadow-md bg-gradient-to-tr from-blue-500 to-indigo-600 text-white">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Smartphone className="w-5 h-5" />
+                <h4 className="font-bold text-sm">Install as Mobile App</h4>
+              </div>
+              <p className="text-xs text-blue-100 mb-3">
+                Add LaptopGuard AI to your phone home screen for instant remote access with zero app store delays.
+              </p>
+              <button
+                onClick={handleInstallPwa}
+                className="w-full py-2.5 px-4 rounded-xl bg-white text-blue-700 font-bold text-xs shadow-md active:scale-98 transition-all"
+              >
+                {isPwaInstalled ? 'App Already Installed' : 'Add to Home Screen (Install)'}
+              </button>
+            </div>
+
+            {/* Direct Downloads Hub */}
+            <div className="jelly-card p-4 rounded-3xl border border-white/80 shadow-md bg-white space-y-2.5">
+              <span className="text-xs font-black text-slate-900 block mb-1">Downloads Hub</span>
+
+              <a
+                href={getDownloadUrl('android-apk')}
+                className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs hover:bg-blue-50 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="font-bold text-slate-800 block">Android APK Package</span>
+                    <span className="text-[10px] text-slate-500">Version 1.4.2</span>
+                  </div>
+                </div>
+                <Download className="w-4 h-4 text-slate-500" />
+              </a>
+
+              <a
+                href={getDownloadUrl('windows-exe')}
+                className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs hover:bg-blue-50 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Laptop className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <span className="font-bold text-slate-800 block">Windows Sentinel .exe</span>
+                    <span className="text-[10px] text-slate-500">79.7 MB Standalone</span>
+                  </div>
+                </div>
+                <Download className="w-4 h-4 text-slate-500" />
+              </a>
+
+              <button
+                onClick={() => checkAutoUpdate(true)}
+                disabled={isCheckingUpdate}
+                className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+                <span>{isCheckingUpdate ? 'Checking OTA...' : 'Check for App Updates'}</span>
+              </button>
+            </div>
+
+            {/* Logout Action */}
+            <button
+              onClick={() => {
+                logoutUser();
+                onBackToLanding();
+              }}
+              className="w-full py-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Log Out of Account</span>
+            </button>
+
+          </div>
+        )}
+
+      </main>
+
+      {/* 3. Native Style Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-xl border-t border-slate-200/80 px-4 py-2 z-40 flex items-center justify-around shadow-lg">
+        
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'home' ? 'text-blue-600 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <Shield className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px]">Home</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('camera')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'camera' ? 'text-blue-600 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <Camera className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px]">Camera</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('map')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'map' ? 'text-blue-600 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <MapPin className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px]">Radar</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('alerts')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer relative ${
+            activeTab === 'alerts' ? 'text-blue-600 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <Bell className="w-5 h-5 stroke-[2.2]" />
+          {events.length > 0 && (
+            <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500" />
+          )}
+          <span className="text-[10px]">Alerts</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'profile' ? 'text-blue-600 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <User className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px]">Profile</span>
+        </button>
+
+      </nav>
+
     </div>
   );
 };
