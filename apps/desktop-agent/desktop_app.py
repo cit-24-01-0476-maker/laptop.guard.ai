@@ -38,6 +38,7 @@ from monitors.network_monitor import NetworkMonitor
 from monitors.movement_detector import MovementDetector
 from monitors.login_monitor import LoginMonitor
 from actions.remote_lock import lock_workstation
+from actions.remote_unlock import unlock_workstation
 from actions.alarm_player import alarm_controller
 from actions.camera_streamer import camera_streamer
 from actions.snapshot_taker import take_security_snapshot
@@ -204,6 +205,8 @@ class LaptopGuardDesktopApp:
 
         if action in ("LOCK_DEVICE", "LOCK"):
             self.lock_workstation_now()
+        elif action in ("UNLOCK", "UNLOCK_DEVICE", "UNLOCK_WORKSTATION"):
+            unlock_workstation(payload.get("pin") or payload.get("password"))
         elif action in ("PLAY_ALARM", "TRIGGER_ALARM", "ALARM", "SOUND_ALARM"):
             alarm_controller.play_alarm(duration=15)
         elif action in ("STOP_ALARM", "SILENCE_ALARM", "SILENCE"):
@@ -303,5 +306,17 @@ class LaptopGuardDesktopApp:
         self.gui.start_gui()
 
 if __name__ == "__main__":
-    app = LaptopGuardDesktopApp()
-    app.start()
+    try:
+        app = LaptopGuardDesktopApp()
+        app.start()
+    except Exception as e:
+        import traceback
+        log_dir = Path.home() / ".laptopguard"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with open(log_dir / "crash.log", "w") as f:
+            traceback.print_exc(file=f)
+        try:
+            with open("laptopguard_crash.log", "w") as f:
+                traceback.print_exc(file=f)
+        except Exception:
+            pass

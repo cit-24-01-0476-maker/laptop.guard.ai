@@ -38,6 +38,7 @@ interface SecurityContextType {
   armDevice: (deviceId: string) => Promise<void>;
   disarmDevice: (deviceId: string) => Promise<void>;
   lockDevice: (deviceId: string) => Promise<void>;
+  unlockDevice: (deviceId: string, pin?: string) => Promise<void>;
   soundAlarm: (deviceId: string) => Promise<void>;
   stopAlarm: (deviceId: string) => Promise<void>;
   toggleAlarm: (deviceId: string) => Promise<void>;
@@ -279,6 +280,13 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshAll();
   };
 
+  const unlockDevice = async (deviceId: string, pin?: string) => {
+    setIsAlarmActive(false);
+    await api.dispatchCommand(deviceId, 'UNLOCK_WORKSTATION', { pin });
+    setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
+    refreshAll();
+  };
+
   const soundAlarm = async (deviceId: string) => {
     setIsAlarmActive(true);
     await api.dispatchCommand(deviceId, 'PLAY_ALARM');
@@ -349,6 +357,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         armDevice,
         disarmDevice,
         lockDevice,
+        unlockDevice,
         soundAlarm,
         stopAlarm,
         toggleAlarm,

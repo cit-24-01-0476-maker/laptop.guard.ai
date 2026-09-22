@@ -86,7 +86,7 @@ async def dispatch_command(
     db.add(audit)
 
     # 5. Apply state transitions on device model
-    if command_type == "ARM_DEVICE":
+    if command_type in ("ARM_DEVICE", "UNLOCK_WORKSTATION", "UNLOCK_DEVICE", "UNLOCK"):
         device.status = "Protected"
     elif command_type == "DISARM_DEVICE":
         device.status = "Disarmed"
@@ -104,7 +104,7 @@ async def dispatch_command(
             "device_id": device_id,
             "is_alarm_active": True
         })
-    elif command_type in ("STOP_ALARM", "DISARM_DEVICE"):
+    elif command_type in ("STOP_ALARM", "DISARM_DEVICE", "UNLOCK_WORKSTATION", "UNLOCK_DEVICE", "UNLOCK"):
         await hub.broadcast_to_user(current_user.id, {
             "type": "ALARM_STATE_CHANGED",
             "device_id": device_id,

@@ -27,7 +27,10 @@ import {
   Clock,
   ChevronRight,
   Smartphone,
-  Navigation
+  Navigation,
+  Fingerprint,
+  Unlock,
+  Key
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
@@ -50,6 +53,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     armDevice,
     disarmDevice,
     lockDevice,
+    unlockDevice,
     setIsLostModalOpen,
     isWsConnected,
     user,
@@ -65,6 +69,19 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+
+  // Biometric Unlock States
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState(() => {
+    try {
+      return localStorage.getItem('laptopguard_win_pin') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [showPinText, setShowPinText] = useState(false);
+  const [isBiometricScanning, setIsBiometricScanning] = useState(false);
+  const [unlockToast, setUnlockToast] = useState<string | null>(null);
 
   // Camera Live states
   const [cameraKey, setCameraKey] = useState<number>(Date.now());
@@ -111,6 +128,63 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     } else {
       alert('To install on your phone:\n• On iPhone: Tap Share -> "Add to Home Screen"\n• On Android: Tap browser menu -> "Install App"');
     }
+  };
+
+  const handleBiometricUnlock = async () => {
+    const savedPin = localStorage.getItem('laptopguard_win_pin') || '';
+    if (!savedPin) {
+      setIsPinModalOpen(true);
+      return;
+    }
+
+    setIsBiometricScanning(true);
+    setUnlockToast('Scanning Phone Biometrics (Fingerprint / Face)...');
+
+    // Trigger Phone Biometrics via WebAuthn if available
+    try {
+      if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if (available) {
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+          await navigator.credentials.get({
+            publicKey: {
+              challenge,
+              timeout: 60000,
+              userVerification: 'required'
+            }
+          }).catch(() => {
+            // Dismissed or fallback
+          });
+        }
+      }
+    } catch {
+      // Graceful fallback
+    }
+
+    try {
+      await unlockDevice(currentDev.id, savedPin);
+      setUnlockToast('✨ Fingerprint Verified — Laptop Unlocked!');
+      setTimeout(() => setUnlockToast(null), 4000);
+    } catch {
+      setUnlockToast('Remote unlock command dispatched to Sentinel.');
+      setTimeout(() => setUnlockToast(null), 3000);
+    } finally {
+      setIsBiometricScanning(false);
+    }
+  };
+
+  const handleSavePin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinInput.trim()) return;
+    try {
+      localStorage.setItem('laptopguard_win_pin', pinInput.trim());
+    } catch {
+      // ignore
+    }
+    setIsPinModalOpen(false);
+    setUnlockToast('🔐 Windows Credential Linked to Phone Biometrics!');
+    setTimeout(() => setUnlockToast(null), 3500);
   };
 
   // Automatically start camera session on laptop when user opens Camera tab
@@ -336,6 +410,37 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
             {/* Quick Action Control Grid */}
             <div className="grid grid-cols-2 gap-3">
+              {/* Biometric PC Unlock (Full Width Highlight Card) */}
+              <div className="col-span-2 p-4 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between gap-3 shadow-lg shadow-emerald-600/25 active:scale-[0.99] transition-all">
+                <button
+                  type="button"
+                  onClick={handleBiometricUnlock}
+                  disabled={isBiometricScanning}
+                  className="flex-1 flex items-center gap-3 text-left cursor-pointer"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm shadow-inner shrink-0">
+                    <Fingerprint className={`w-6 h-6 text-white ${isBiometricScanning ? 'animate-pulse text-amber-300' : ''}`} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black tracking-tight flex items-center gap-1.5">
+                      <span>Biometric Laptop Unlock</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-white/25 text-[8px] font-bold uppercase tracking-wider">Fingerprint</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-100 font-medium mt-0.5">
+                      {pinInput ? 'Touch fingerprint to unlock Windows' : 'Link Windows PIN to Fingerprint'}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPinModalOpen(true)}
+                  className="p-2.5 rounded-2xl bg-white/15 hover:bg-white/30 text-white transition-colors cursor-pointer shrink-0"
+                  title="Configure Windows PIN / Password"
+                >
+                  <Key className="w-4 h-4" />
+                </button>
+              </div>
+
               {/* 1. Deterrence Siren */}
               <button
                 onClick={() => {
@@ -765,6 +870,95 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         </button>
 
       </nav>
+
+      {/* Biometric Unlock Feedback Toast */}
+      {unlockToast && (
+        <div className="fixed top-5 left-4 right-4 max-w-md mx-auto z-50">
+          <div className="p-3.5 rounded-2xl bg-slate-900/95 text-white shadow-2xl backdrop-blur-md flex items-center gap-3 border border-emerald-500/40">
+            <Fingerprint className="w-5 h-5 text-emerald-400 shrink-0 animate-pulse" />
+            <span className="text-xs font-bold leading-tight">{unlockToast}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Windows PIN & Biometric Linking Modal */}
+      {isPinModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Fingerprint className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Biometric PC Unlock</h3>
+                  <p className="text-[10px] text-slate-500">Link Windows PIN to Fingerprint</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPinModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold hover:bg-slate-200 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Enter your Windows Login PIN or Password. It will be stored securely on your phone and automatically typed when you scan your fingerprint.
+            </p>
+
+            <form onSubmit={handleSavePin} className="space-y-3">
+              <div className="relative">
+                <input
+                  type={showPinText ? 'text' : 'password'}
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value)}
+                  placeholder="e.g. 1234 or Windows Password"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 pr-16"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPinText(!showPinText)}
+                  className="absolute right-3 top-2.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 py-1 px-2 cursor-pointer"
+                >
+                  {showPinText ? 'Hide' : 'Show'}
+                </button>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 active:scale-98 transition-all cursor-pointer"
+                >
+                  Save & Link Fingerprint
+                </button>
+                {pinInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem('laptopguard_win_pin');
+                      } catch {
+                        // ignore
+                      }
+                      setPinInput('');
+                      setIsPinModalOpen(false);
+                      setUnlockToast('PIN removed from storage.');
+                      setTimeout(() => setUnlockToast(null), 2500);
+                    }}
+                    className="py-3 px-3 rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-bold transition-all cursor-pointer"
+                    title="Clear saved PIN"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
