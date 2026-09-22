@@ -11,12 +11,11 @@ def lock_workstation() -> bool:
         if sys.platform == "win32":
             logger.info("Calling Windows user32.LockWorkStation()...")
             result = ctypes.windll.user32.LockWorkStation()
-            if result != 0:
-                logger.info("Windows workstation successfully locked.")
-                return True
-            else:
-                logger.error("Failed to lock Windows workstation.")
-                return False
+            if result == 0:
+                logger.warning("LockWorkStation returned 0, attempting rundll32 fallback...")
+                os.system("rundll32.exe user32.dll,LockWorkStation")
+            logger.info("Windows workstation lock dispatched.")
+            return True
         elif sys.platform == "darwin":
             # macOS placeholder
             os.system('/System/Library/CoreServices/Menu\\ Extras/User.menu/Contents/Resources/CGSession -suspend')

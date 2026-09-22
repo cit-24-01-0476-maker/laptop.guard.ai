@@ -19,6 +19,37 @@ def unmute_and_boost_volume():
     except Exception:
         pass
 
+import os
+import wave
+import struct
+import math
+import tempfile
+
+def get_siren_wav_path() -> str:
+    """Generates an authentic, loud oscillating emergency siren WAV file."""
+    siren_path = os.path.join(tempfile.gettempdir(), "laptopguard_siren.wav")
+    try:
+        sample_rate = 22050
+        duration = 1.6  # 1.6 second looping sweep
+        num_samples = int(sample_rate * duration)
+        with wave.open(siren_path, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            frames = bytearray()
+            phase = 0.0
+            for i in range(num_samples):
+                t = i / sample_rate
+                # High-decibel frequency sweep: 900 Hz to 1800 Hz
+                freq = 1350 + 450 * math.sin(2 * math.pi * 1.8 * t)
+                phase += 2 * math.pi * freq / sample_rate
+                val = int(32767 * 0.98 * math.sin(phase))
+                frames.extend(struct.pack('<h', val))
+            wf.writeframes(frames)
+    except Exception as e:
+        logger.error(f"Error generating siren WAV: {e}")
+    return siren_path
+
 class AlarmController:
     def __init__(self, on_state_change: Optional[Callable[[bool], None]] = None):
         self.is_playing = False
@@ -30,41 +61,26 @@ class AlarmController:
     def _beep_loop(self):
         unmute_and_boost_volume()
         start_time = time.time()
-        logger.info(f"Siren sound loop started (Auto-timeout limit: {self.max_duration_seconds}s)")
+        logger.info(f"Loud siren loop started (Auto-timeout limit: {self.max_duration_seconds}s)")
         
+        # Start loud audible siren through speakers
+        if sys.platform == "win32":
+            try:
+                import winsound
+                wav_path = get_siren_wav_path()
+                winsound.PlaySound(wav_path, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP)
+            except Exception as e:
+                logger.error(f"PlaySound error: {e}")
+
         while self.is_playing:
-            # Auto-timeout check: stop after 15 seconds
             elapsed = time.time() - start_time
             if elapsed >= self.max_duration_seconds:
                 logger.info(f"Siren auto-timeout reached ({elapsed:.1f}s). Silencing alarm automatically.")
                 break
 
-            try:
-                if sys.platform == "win32":
-                    import winsound
-                    if not self.is_playing:
-                        break
-                    try:
-                        winsound.Beep(2500, 200)
-                    except Exception:
-                        winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-                    time.sleep(0.04)
-                    
-                    if not self.is_playing:
-                        break
-                    try:
-                        winsound.Beep(1800, 200)
-                    except Exception:
-                        winsound.MessageBeep(-1)
-                    time.sleep(0.04)
-                else:
-                    if not self.is_playing:
-                        break
-                    print("\a", flush=True)
-                    time.sleep(0.4)
-            except Exception as e:
-                logger.error(f"Siren error: {e}")
-                time.sleep(0.5)
+            # Continuously boost volume to maximum so intruder cannot mute it
+            unmute_and_boost_volume()
+            time.sleep(0.5)
 
         # When loop completes (either timeout or stopped), cleanly stop
         self.stop_alarm()
@@ -169,6 +185,13 @@ class AlarmController:
             return
         logger.info("Stopping security alarm and silencing siren.")
         self.is_playing = False
+        
+        if sys.platform == "win32":
+            try:
+                import winsound
+                winsound.PlaySound(None, winsound.SND_PURGE)
+            except Exception:
+                pass
         
         if self.on_state_change:
             try:
