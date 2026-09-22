@@ -51,3 +51,9 @@ evidence_vault/*
 *.swo
 .DS_Store
 Thumbs.db
+
+# Android & Capacitor
+apps/web/android/.gradle/
+apps/web/android/app/build/
+apps/web/android/build/
+*.apk

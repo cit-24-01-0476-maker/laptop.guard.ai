@@ -1,0 +1,10 @@
+{
+  "appId": "ai.laptopguard.mobile",
+  "appName": "LaptopGuard AI",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
