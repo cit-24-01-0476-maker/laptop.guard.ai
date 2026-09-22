@@ -17,6 +17,9 @@ build/
 dist/
 *.spec
 *.exe
+*.apk
+apps/web/public/*.apk
+apps/web/public/*.exe
 
 # Node & Frontend
 node_modules/

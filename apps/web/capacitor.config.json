@@ -4,7 +4,6 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://laptopguard-ai.vercel.app?app=true",
     "androidScheme": "https",
     "cleartext": true
   }

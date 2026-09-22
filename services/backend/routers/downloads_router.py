@@ -134,7 +134,7 @@ async def download_android_apk():
                 media_type="application/vnd.android.package-archive"
             )
 
-    return RedirectResponse(url="https://laptopguard-ai.vercel.app/LaptopGuard-AI.apk", status_code=302)
+    return RedirectResponse(url="https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk", status_code=302)
 
 
 # Root alias router for /downloads/*
