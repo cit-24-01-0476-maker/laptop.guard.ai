@@ -42,16 +42,20 @@ class AlarmController:
             try:
                 if sys.platform == "win32":
                     import winsound
-                    # 2500Hz high pitch burst
                     if not self.is_playing:
                         break
-                    winsound.Beep(2500, 220)
+                    try:
+                        winsound.Beep(2500, 200)
+                    except Exception:
+                        winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                     time.sleep(0.04)
                     
-                    # 1800Hz low pitch burst
                     if not self.is_playing:
                         break
-                    winsound.Beep(1800, 220)
+                    try:
+                        winsound.Beep(1800, 200)
+                    except Exception:
+                        winsound.MessageBeep(-1)
                     time.sleep(0.04)
                 else:
                     if not self.is_playing:
@@ -138,6 +142,10 @@ class AlarmController:
 
         gui_thread = threading.Thread(target=run_gui, daemon=True)
         gui_thread.start()
+
+    def play_alarm(self, duration: int = 15):
+        self.max_duration_seconds = duration or 15
+        self.start_alarm()
 
     def start_alarm(self):
         if self.is_playing:

@@ -29,7 +29,7 @@ import {
   Navigation
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
-import { getDownloadUrl, getCameraStreamUrl } from '../services/api';
+import { api, getDownloadUrl, getCameraStreamUrl } from '../services/api';
 
 interface MobileViewProps {
   onBackToLanding: () => void;
@@ -103,6 +103,13 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       alert('To install on your phone:\n• On iPhone: Tap Share -> "Add to Home Screen"\n• On Android: Tap browser menu -> "Install App"');
     }
   };
+
+  // Automatically start camera session on laptop when user opens Camera tab
+  useEffect(() => {
+    if (activeTab === 'camera' && currentDev?.id) {
+      api.startCameraSession(currentDev.id).catch(() => {});
+    }
+  }, [activeTab, currentDev?.id]);
 
   // Check Over-The-Air (OTA) Auto-Update
   const checkAutoUpdate = async (manual = false) => {

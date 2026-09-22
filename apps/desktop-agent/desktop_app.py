@@ -204,14 +204,18 @@ class LaptopGuardDesktopApp:
 
         if action in ("LOCK_DEVICE", "LOCK"):
             self.lock_workstation_now()
-        elif action in ("PLAY_ALARM", "TRIGGER_ALARM"):
+        elif action in ("PLAY_ALARM", "TRIGGER_ALARM", "ALARM", "SOUND_ALARM"):
             alarm_controller.play_alarm(duration=15)
-        elif action in ("STOP_ALARM", "SILENCE_ALARM"):
+        elif action in ("STOP_ALARM", "SILENCE_ALARM", "SILENCE"):
             alarm_controller.stop_alarm()
         elif action in ("ARM", "ARM_DEVICE"):
             self.arm_device()
         elif action in ("DISARM", "DISARM_DEVICE"):
             self.disarm_device()
+        elif action in ("START_CAMERA_SESSION", "START_CAMERA", "VIEW_CAMERA", "CAMERA"):
+            camera_streamer.start_stream(payload.get("session_id", "live_session"))
+        elif action in ("STOP_CAMERA_SESSION", "STOP_CAMERA", "STOP_VIEW"):
+            camera_streamer.stop_stream()
         elif action in ("TAKE_SECURITY_SNAPSHOT", "SNAPSHOT"):
             take_security_snapshot(self.device_id, "REMOTE_REQUEST")
 
