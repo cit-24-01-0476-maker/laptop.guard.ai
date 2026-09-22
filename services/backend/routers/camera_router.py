@@ -9,6 +9,7 @@ from services.backend import models, schemas
 from services.backend.auth import get_current_user
 from services.backend.websocket_hub import hub
 from fastapi.responses import StreamingResponse, Response
+from packages.security.signer import generate_command_envelope
 
 router = APIRouter(prefix="/camera", tags=["Live Camera"])
 
@@ -194,21 +195,22 @@ async def start_camera_session(
     db.commit()
     db.refresh(session_obj)
 
-    # 5. Notify Laptop Agent over WebSocket with all command aliases
-    await hub.send_command_to_device(device.id, {
-        "command_id": f"cmd_cam_{uuid.uuid4().hex[:8]}",
-        "command_type": "START_CAMERA_SESSION",
-        "action": "START_CAMERA_SESSION",
-        "command": "START_CAMERA_SESSION",
-        "type": "START_CAMERA_SESSION",
-        "device_id": device.id,
-        "user_id": current_user.id,
-        "payload": {
+    # 5. Notify Laptop Agent over WebSocket with properly SIGNED envelope
+    envelope = generate_command_envelope(
+        command_type="START_CAMERA_SESSION",
+        device_id=device.id,
+        user_id=current_user.id,
+        payload={
             "session_id": session_id,
             "expires_at": expires_at.isoformat(),
             "ice_servers": settings.ICE_SERVERS
         }
-    })
+    )
+    # Add command aliases so desktop agent recognises it regardless of version
+    envelope["action"] = "START_CAMERA_SESSION"
+    envelope["command"] = "START_CAMERA_SESSION"
+    envelope["type"] = "START_CAMERA_SESSION"
+    await hub.send_command_to_device(device.id, envelope)
 
     return {
         "id": session_obj.id,
@@ -260,15 +262,15 @@ async def stop_camera_session(
     db.commit()
 
     # Inform agent to close camera stream and extinguish any indicator
-    await hub.send_command_to_device(session_obj.device_id, {
-        "command_id": f"cmd_camstop_{uuid.uuid4().hex[:8]}",
-        "command_type": "STOP_CAMERA_SESSION",
-        "action": "STOP_CAMERA_SESSION",
-        "command": "STOP_CAMERA_SESSION",
-        "type": "STOP_CAMERA_SESSION",
-        "device_id": session_obj.device_id,
-        "user_id": current_user.id,
-        "payload": {"session_id": session_id}
-    })
+    stop_envelope = generate_command_envelope(
+        command_type="STOP_CAMERA_SESSION",
+        device_id=session_obj.device_id,
+        user_id=current_user.id,
+        payload={"session_id": session_id}
+    )
+    stop_envelope["action"] = "STOP_CAMERA_SESSION"
+    stop_envelope["command"] = "STOP_CAMERA_SESSION"
+    stop_envelope["type"] = "STOP_CAMERA_SESSION"
+    await hub.send_command_to_device(session_obj.device_id, stop_envelope)
 
     return {"status": "terminated", "session_id": session_id, "duration": duration}
