@@ -58,9 +58,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
   };
 
   const handleDownloadAndroid = () => {
-    const directUrl = typeof window !== 'undefined' ? `${window.location.origin}/LaptopGuard-AI.apk` : getDownloadUrl('android-apk');
     const link = document.createElement('a');
-    link.href = directUrl;
+    link.href = 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk';
     link.setAttribute('download', 'LaptopGuard-AI.apk');
     document.body.appendChild(link);
     link.click();
@@ -552,13 +551,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
 
             <div className="flex gap-3">
-              <button
-                onClick={handleDownloadAndroid}
+              <a
+                href="https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk"
+                download="LaptopGuard-AI.apk"
                 className="jelly-button flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 active:scale-[0.98] cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Android APK</span>
-              </button>
+              </a>
               <button
                 onClick={onOpenMobileView}
                 className="jelly-button py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
