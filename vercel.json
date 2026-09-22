@@ -1,8 +1,12 @@
 {
-  "framework": "vite",
-  "rootDirectory": "apps/web",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "cd apps/web && npm install && npm run build",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
+    {
+      "source": "/((?!.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*\\.apk)",
@@ -16,12 +20,6 @@
           "value": "attachment; filename=\"LaptopGuard-AI.apk\""
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!.*\\..*).*)",
-      "destination": "/index.html"
     }
   ]
 }
