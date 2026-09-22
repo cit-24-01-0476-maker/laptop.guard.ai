@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { SecurityProvider, useSecurity } from './context/SecurityContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -15,6 +16,7 @@ import { SecuritySettingsView } from './views/SecuritySettingsView';
 import { AccountView } from './views/AccountView';
 import { LandingView } from './views/LandingView';
 import { MobileView } from './views/MobileView';
+import { MobileAuthView } from './views/MobileAuthView';
 
 import { LockConfirmModal } from './components/Modals/LockConfirmModal';
 import { AlarmTriggerModal } from './components/Modals/AlarmTriggerModal';
@@ -23,10 +25,52 @@ import { CriticalAlertModal } from './components/Modals/CriticalAlertModal';
 import { PairingModal } from './components/Modals/PairingModal';
 import { AuthModal } from './components/Modals/AuthModal';
 
+const checkIsAppMode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  if (Capacitor.isNativePlatform()) return true;
+  const hash = window.location.hash;
+  const searchParams = new URLSearchParams(window.location.search);
+  if (
+    hash === '#mobile' ||
+    hash === '#app' ||
+    searchParams.get('view') === 'mobile' ||
+    searchParams.get('app') === 'true'
+  ) {
+    return true;
+  }
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    return true;
+  }
+  if (
+    window.innerWidth <= 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  ) {
+    return true;
+  }
+  return false;
+};
+
 export const AppContent: React.FC = () => {
   const { user, isAuthenticated, logoutUser, refreshAll } = useSecurity();
-  // Default to landing page (SaaS presentation website)
-  const [currentView, setCurrentView] = useState<string>('landing');
+  const [isAppMode, setIsAppMode] = useState<boolean>(checkIsAppMode);
+  
+  // Track device/viewport mode dynamically
+  useEffect(() => {
+    const handleCheck = () => {
+      setIsAppMode(checkIsAppMode());
+    };
+    window.addEventListener('resize', handleCheck);
+    window.addEventListener('hashchange', handleCheck);
+    return () => {
+      window.removeEventListener('resize', handleCheck);
+      window.removeEventListener('hashchange', handleCheck);
+    };
+  }, []);
+
+  const [currentView, setCurrentView] = useState<string>(() => {
+    if (checkIsAppMode()) return 'mobile';
+    return isAuthenticated ? 'dashboard' : 'landing';
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [pendingTargetView, setPendingTargetView] = useState<string>('dashboard');
 
@@ -41,42 +85,68 @@ export const AppContent: React.FC = () => {
 
   const handleAuthSuccess = () => {
     refreshAll();
-    setCurrentView(pendingTargetView || 'dashboard');
+    if (isAppMode) {
+      setCurrentView('mobile');
+    } else {
+      setCurrentView(pendingTargetView || 'dashboard');
+    }
   };
 
   const handleLogout = () => {
     logoutUser();
-    setCurrentView('landing');
+    if (isAppMode) {
+      setCurrentView('mobile');
+    } else {
+      setCurrentView('landing');
+    }
   };
 
-  // Auto-detect mobile devices or direct mobile links (#mobile or ?view=mobile)
+  // If App Mode is detected and view is set to landing, force mobile view
   useEffect(() => {
-    const hash = window.location.hash;
-    const searchParams = new URLSearchParams(window.location.search);
-    const wantsMobile = hash === '#mobile' || searchParams.get('view') === 'mobile';
-    const isMobileDevice = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    if (wantsMobile) {
-      if (isAuthenticated) {
-        setCurrentView('mobile');
-      } else {
-        setPendingTargetView('mobile');
-        setIsAuthModalOpen(true);
-      }
-    } else if (isMobileDevice && isAuthenticated && currentView === 'landing') {
+    if (isAppMode && currentView === 'landing') {
       setCurrentView('mobile');
     }
-  }, [isAuthenticated]);
+  }, [isAppMode, currentView]);
 
-  // Enforce auth: If not authenticated and trying to view a protected view, redirect to landing & prompt login
+  // If user becomes authenticated on desktop and is on landing, can remain or go to dashboard
   useEffect(() => {
-    if (!isAuthenticated && currentView !== 'landing') {
+    if (!isAuthenticated && !isAppMode && currentView !== 'landing') {
       setCurrentView('landing');
       setIsAuthModalOpen(true);
     }
-  }, [isAuthenticated, currentView]);
+  }, [isAuthenticated, isAppMode, currentView]);
 
-  // Render dedicated standalone views
+  // ==========================================
+  // 1. MOBILE APP MODE (Native APK or Mobile)
+  // Bypasses the website completely!
+  // ==========================================
+  if (isAppMode) {
+    // Unauthenticated: Dedicated Full-Screen Mobile Login Screen
+    if (!isAuthenticated) {
+      return (
+        <MobileAuthView
+          onSuccess={() => {
+            refreshAll();
+            setCurrentView('mobile');
+          }}
+        />
+      );
+    }
+
+    // Authenticated Mobile App Dashboard
+    if (currentView === 'mobile') {
+      return (
+        <MobileView
+          onBackToLanding={handleLogout}
+          onOpenDashboard={() => setCurrentView('dashboard')}
+        />
+      );
+    }
+  }
+
+  // ==========================================
+  // 2. DESKTOP WEB EXPERIENCE
+  // ==========================================
   if (currentView === 'landing') {
     return (
       <>
@@ -104,7 +174,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  // Dashboard Sub-Views
+  // Desktop Dashboard Views
   const renderDashboardView = () => {
     switch (currentView) {
       case 'dashboard':
@@ -148,7 +218,7 @@ export const AppContent: React.FC = () => {
         <div className="ambient-blob-3" />
       </div>
 
-      {/* Top Floating Glass Navbar (With Intro Site and Mobile Controller Quick Links) */}
+      {/* Top Floating Glass Navbar */}
       <div className="p-3 sm:p-4 lg:px-6 xl:px-8 z-30 w-full mx-auto max-w-[1920px]">
         <Navbar
           currentView={currentView}
@@ -159,12 +229,10 @@ export const AppContent: React.FC = () => {
         />
       </div>
 
-      {/* Main Floating Layout Container (Full 16:9 Widescreen Optimized) */}
+      {/* Main Floating Layout Container */}
       <div className="flex-1 flex w-full px-3 sm:px-4 lg:px-6 xl:px-8 pb-6 gap-5 z-10 max-w-[1920px] mx-auto">
-        {/* Left Floating Translucent Sidebar */}
         <Sidebar currentView={currentView} onNavigate={(view) => setCurrentView(view)} />
 
-        {/* Center Page Content Area */}
         <main className="flex-1 overflow-y-auto">
           {renderDashboardView()}
         </main>
@@ -182,7 +250,7 @@ export const AppContent: React.FC = () => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={() => refreshAll()}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   Shield,
   ShieldAlert,
@@ -186,12 +187,14 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button
-              onClick={onOpenDashboard}
-              className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs"
-            >
-              <span>PC View</span>
-            </button>
+            {!Capacitor.isNativePlatform() && (
+              <button
+                onClick={onOpenDashboard}
+                className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs"
+              >
+                <span>PC View</span>
+              </button>
+            )}
           </div>
         </div>
 

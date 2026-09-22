@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import {
   Device,
   SecurityEvent,
@@ -12,9 +13,12 @@ export const getApiBaseUrl = (): string => {
     const base = import.meta.env.VITE_API_URL.replace(/\/$/, '');
     return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
   }
+  if (Capacitor.isNativePlatform()) {
+    return 'https://laptopguard-api.onrender.com/api/v1';
+  }
   if (typeof window !== 'undefined') {
     const isDevPort = window.location.port === '3000';
-    if (isDevPort || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    if ((isDevPort || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !Capacitor.isNativePlatform()) {
       return `http://${window.location.hostname}:8000/api/v1`;
     }
     // Production Cloud Backend fallback

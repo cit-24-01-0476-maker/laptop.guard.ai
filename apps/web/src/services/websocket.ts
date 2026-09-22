@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 type MessageHandler = (data: any) => void;
 
 class RealtimeHubService {
@@ -24,9 +26,11 @@ class RealtimeHubService {
       const base = import.meta.env.VITE_WS_URL.replace(/\/$/, '');
       const wsPath = base.endsWith('/ws') ? base : `${base}/ws`;
       wsUrl = `${wsPath}/client/${userId}`;
+    } else if (Capacitor.isNativePlatform()) {
+      wsUrl = `wss://laptopguard-api.onrender.com/ws/client/${userId}`;
     } else if (typeof window !== 'undefined') {
       const isDevPort = window.location.port === '3000';
-      if (isDevPort || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if ((isDevPort || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !Capacitor.isNativePlatform()) {
         wsUrl = `ws://${window.location.hostname}:8000/ws/client/${userId}`;
       } else {
         wsUrl = `wss://laptopguard-api.onrender.com/ws/client/${userId}`;
