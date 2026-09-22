@@ -30,8 +30,8 @@ export const getDownloadUrl = (endpoint: string): string => {
     return 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.exe';
   }
   if (clean === 'android-apk') {
-    // Deliver the official Android Mobile APK installer
-    return 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk';
+    // Deliver the official Android Mobile APK installer directly from public CDN
+    return '/LaptopGuard-AI.apk';
   }
   const base = getApiBaseUrl().replace(/\/api\/v1$/, '');
   return `${base}/api/v1/downloads/${clean}`;

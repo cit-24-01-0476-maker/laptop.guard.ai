@@ -119,19 +119,22 @@ async def download_android_apk():
     Otherwise, redirects to the high-speed GitHub Release CDN.
     """
     root = Path(__file__).resolve().parents[3]
-    apk_path = root / "dist" / "LaptopGuard-AI.apk"
-    if not apk_path.exists():
-        apk_path = root / "apps" / "web" / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+    candidate_paths = [
+        Path(__file__).resolve().parents[1] / "static" / "LaptopGuard-AI.apk",
+        root / "services" / "backend" / "static" / "LaptopGuard-AI.apk",
+        root / "apps" / "web" / "public" / "LaptopGuard-AI.apk",
+        root / "dist" / "LaptopGuard-AI.apk",
+        root / "apps" / "web" / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+    ]
+    for apk_path in candidate_paths:
+        if apk_path.exists():
+            return FileResponse(
+                path=str(apk_path),
+                filename="LaptopGuard-AI.apk",
+                media_type="application/vnd.android.package-archive"
+            )
 
-    if apk_path.exists():
-        return FileResponse(
-            path=str(apk_path),
-            filename=f"LaptopGuard-AI-Mobile-v{CURRENT_VERSION}.apk",
-            media_type="application/vnd.android.package-archive"
-        )
-
-    release_url = f"https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v{CURRENT_VERSION}/LaptopGuard-AI.apk"
-    return RedirectResponse(url=release_url, status_code=302)
+    return RedirectResponse(url="https://laptopguard-ai.vercel.app/LaptopGuard-AI.apk", status_code=302)
 
 
 # Root alias router for /downloads/*

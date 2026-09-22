@@ -577,7 +577,8 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
               <a
                 href={getDownloadUrl('android-apk')}
-                className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs hover:bg-blue-50 transition-colors"
+                download="LaptopGuard-AI.apk"
+                className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs hover:bg-blue-50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <Smartphone className="w-4 h-4 text-emerald-600" />

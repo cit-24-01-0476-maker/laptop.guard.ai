@@ -46,7 +46,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
   };
 
   const handleDownloadAndroid = () => {
-    window.open(getDownloadUrl('android-apk'), '_blank');
+    const url = getDownloadUrl('android-apk');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'LaptopGuard-AI.apk';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
