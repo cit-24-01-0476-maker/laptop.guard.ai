@@ -38,15 +38,33 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
 
   const handleDownloadExe = () => {
-    window.open(getDownloadUrl('windows-exe'), '_blank');
+    const link = document.createElement('a');
+    link.href = getDownloadUrl('windows-exe');
+    link.setAttribute('download', 'LaptopGuard-AI.exe');
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDownloadWindows = () => {
-    window.open(getDownloadUrl('windows-agent'), '_blank');
+    const link = document.createElement('a');
+    link.href = getDownloadUrl('windows-agent');
+    link.setAttribute('download', 'LaptopGuard-Windows-Agent-v1.4.2.zip');
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDownloadAndroid = () => {
-    window.location.href = getDownloadUrl('android-apk');
+    const directUrl = typeof window !== 'undefined' ? `${window.location.origin}/LaptopGuard-AI.apk` : getDownloadUrl('android-apk');
+    const link = document.createElement('a');
+    link.href = directUrl;
+    link.setAttribute('download', 'LaptopGuard-AI.apk');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (

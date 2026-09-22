@@ -30,7 +30,7 @@ import {
   Navigation
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
-import { api, getDownloadUrl, getCameraStreamUrl } from '../services/api';
+import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
 
 interface MobileViewProps {
   onBackToLanding: () => void;
@@ -54,7 +54,8 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     isWsConnected,
     user,
     logoutUser,
-    refreshAll
+    refreshAll,
+    takeSnapshot
   } = useSecurity();
 
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'map' | 'alerts' | 'profile'>('home');
@@ -64,6 +65,13 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+
+  // Camera Live states
+  const [cameraKey, setCameraKey] = useState<number>(Date.now());
+  const [cameraMode, setCameraMode] = useState<'stream' | 'poll'>('stream');
+  const [pollUrl, setPollUrl] = useState<string>('');
+  const [isCapturingSnapshot, setIsCapturingSnapshot] = useState<boolean>(false);
+  const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
 
   // Active or Fallback Device
   const currentDev = selectedDevice || (devices.length > 0 ? devices[0] : {
@@ -109,8 +117,20 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   useEffect(() => {
     if (activeTab === 'camera' && currentDev?.id) {
       api.startCameraSession(currentDev.id).catch(() => {});
+      setCameraKey(Date.now());
     }
   }, [activeTab, currentDev?.id]);
+
+  // Dynamic Snapshot Polling Fallback (500ms intervals)
+  useEffect(() => {
+    let pollTimer: any = null;
+    if (activeTab === 'camera' && cameraMode === 'poll' && currentDev?.id) {
+      pollTimer = setInterval(() => {
+        setPollUrl(getCameraSnapshotUrl(currentDev.id));
+      }, 500);
+    }
+    return () => clearInterval(pollTimer);
+  }, [activeTab, cameraMode, currentDev?.id]);
 
   // Check Over-The-Air (OTA) Auto-Update
   const checkAutoUpdate = async (manual = false) => {
@@ -433,19 +453,73 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               {/* Video container */}
               <div className="rounded-2xl overflow-hidden bg-black aspect-video relative flex items-center justify-center border border-slate-800 shadow-inner">
                 <img
-                  src={getCameraStreamUrl(currentDev.id)}
+                  key={cameraKey}
+                  src={cameraMode === 'stream' ? `${getCameraStreamUrl(currentDev.id)}?t=${cameraKey}` : (pollUrl || getCameraSnapshotUrl(currentDev.id))}
                   alt="Live Webcam Feed"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
+                  onError={() => {
+                    // Automatically switch to ultra-reliable snapshot polling on network glitch
+                    setCameraMode('poll');
+                    setPollUrl(getCameraSnapshotUrl(currentDev.id));
                   }}
                 />
-                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[9px] font-mono text-cyan-300">
-                  DELL G15 • LIVE FEED
+
+                {/* HUD Overlay Badge */}
+                <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg text-[9px] font-mono text-cyan-300 flex items-center gap-1.5 border border-white/10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>DELL G15 • {cameraMode === 'stream' ? 'LIVE MJPEG' : 'AUTO-POLL HD'}</span>
+                </div>
+
+                {/* Stream Reconnect Button */}
+                <div className="absolute bottom-2 right-2">
+                  <button
+                    onClick={() => {
+                      setCameraMode('stream');
+                      setCameraKey(Date.now());
+                      api.startCameraSession(currentDev.id).catch(() => {});
+                    }}
+                    className="py-1 px-2.5 rounded-lg bg-black/70 backdrop-blur-md hover:bg-black/90 text-cyan-300 text-[10px] font-bold flex items-center gap-1 border border-white/10 active:scale-95 transition-all cursor-pointer"
+                    title="Reconnect Camera Stream"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Reconnect</span>
+                  </button>
                 </div>
               </div>
 
-              <p className="text-[10px] text-slate-500 mt-3 text-center">
+              {/* Action Controls Bar */}
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <button
+                  onClick={async () => {
+                    setIsCapturingSnapshot(true);
+                    await takeSnapshot(currentDev.id);
+                    setIsCapturingSnapshot(false);
+                    setSnapshotSuccess(true);
+                    setTimeout(() => setSnapshotSuccess(false), 2500);
+                  }}
+                  disabled={isCapturingSnapshot}
+                  className="flex-1 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-98 transition-all cursor-pointer disabled:opacity-60"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>{isCapturingSnapshot ? 'Capturing...' : snapshotSuccess ? '✓ Snapshot Saved!' : 'Take Security Photo'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const newMode = cameraMode === 'stream' ? 'poll' : 'stream';
+                    setCameraMode(newMode);
+                    setCameraKey(Date.now());
+                    if (newMode === 'poll') {
+                      setPollUrl(getCameraSnapshotUrl(currentDev.id));
+                    }
+                  }}
+                  className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-[11px] font-bold active:scale-98 transition-all cursor-pointer"
+                >
+                  {cameraMode === 'stream' ? 'Switch to Snapshots' : 'Switch to Stream'}
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-500 mt-2 text-center">
                 Strict Privacy Policy: Live stream automatically times out after 5 minutes.
               </p>
             </div>

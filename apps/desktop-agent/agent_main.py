@@ -248,12 +248,12 @@ class LaptopSecurityAgent:
             evi_id = take_security_snapshot(BACKEND_HTTP_URL, self.device_id, "REMOTE_COMMAND")
             await self._report_command_result(cmd_id, "EXECUTED" if evi_id else "FAILED")
 
-        elif cmd_type == "START_CAMERA_SESSION":
+        elif cmd_type in ("START_CAMERA_SESSION", "START_CAMERA_STREAM", "START_CAMERA", "VIEW_CAMERA", "CAMERA"):
             sess_id = command_envelope.get("payload", {}).get("session_id", "session_001")
             camera_streamer.start_stream(sess_id)
             await self._report_command_result(cmd_id, "EXECUTED")
 
-        elif cmd_type == "STOP_CAMERA_SESSION":
+        elif cmd_type in ("STOP_CAMERA_SESSION", "STOP_CAMERA_STREAM", "STOP_CAMERA", "STOP_VIEW"):
             camera_streamer.stop_stream("USER_STOPPED")
             await self._report_command_result(cmd_id, "EXECUTED")
 

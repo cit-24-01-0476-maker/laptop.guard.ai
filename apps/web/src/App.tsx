@@ -27,26 +27,25 @@ import { AuthModal } from './components/Modals/AuthModal';
 
 const checkIsAppMode = (): boolean => {
   if (typeof window === 'undefined') return false;
+  // 1. Running inside native Android / iOS Capacitor APK
   if (Capacitor.isNativePlatform()) return true;
+
+  // 2. Explicit app query param or hash (configured in Capacitor server.url or direct app launch)
   const hash = window.location.hash;
   const searchParams = new URLSearchParams(window.location.search);
   if (
-    hash === '#mobile' ||
     hash === '#app' ||
-    searchParams.get('view') === 'mobile' ||
-    searchParams.get('app') === 'true'
+    searchParams.get('app') === 'true' ||
+    searchParams.get('mode') === 'app'
   ) {
     return true;
   }
+
+  // 3. Standalone installed PWA mode
   if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
     return true;
   }
-  if (
-    window.innerWidth <= 768 ||
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  ) {
-    return true;
-  }
+
   return false;
 };
 

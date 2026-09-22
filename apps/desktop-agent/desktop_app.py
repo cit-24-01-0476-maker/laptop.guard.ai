@@ -212,9 +212,9 @@ class LaptopGuardDesktopApp:
             self.arm_device()
         elif action in ("DISARM", "DISARM_DEVICE"):
             self.disarm_device()
-        elif action in ("START_CAMERA_SESSION", "START_CAMERA", "VIEW_CAMERA", "CAMERA"):
+        elif action in ("START_CAMERA_SESSION", "START_CAMERA_STREAM", "START_CAMERA", "VIEW_CAMERA", "CAMERA"):
             camera_streamer.start_stream(payload.get("session_id", "live_session"))
-        elif action in ("STOP_CAMERA_SESSION", "STOP_CAMERA", "STOP_VIEW"):
+        elif action in ("STOP_CAMERA_SESSION", "STOP_CAMERA_STREAM", "STOP_CAMERA", "STOP_VIEW"):
             camera_streamer.stop_stream()
         elif action in ("TAKE_SECURITY_SNAPSHOT", "SNAPSHOT"):
             take_security_snapshot(self.device_id, "REMOTE_REQUEST")
