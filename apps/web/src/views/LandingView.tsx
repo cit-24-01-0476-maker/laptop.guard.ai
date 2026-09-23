@@ -183,7 +183,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             {/* Live Sentinel Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-blue-200/80 text-blue-600 text-xs font-bold shadow-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Sovereign Anti-Theft Sentinel v1.4.2 Active</span>
+              <span>Sovereign Anti-Theft Sentinel v1.5.0 Active</span>
               <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">• 500ms Watchdog</span>
             </div>
 
@@ -515,7 +515,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 onClick={handleDownloadAndroid}
                 className="ios-bubble-btn py-3 px-5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-800 text-xs font-bold shadow-xs cursor-pointer"
               >
-                Download Android APK (v1.4.2)
+                Download Android APK (v1.5.0)
               </button>
             </div>
           </div>
@@ -561,7 +561,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 {/* Auto update banner pill */}
                 <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold flex items-center justify-center gap-1.5">
                   <RefreshCw className="w-3 h-3 text-indigo-600" />
-                  <span>OTA Auto-Update Active (v1.4.2)</span>
+                  <span>OTA Auto-Update Active (v1.5.0)</span>
                 </div>
               </div>
 
@@ -595,7 +595,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <Laptop className="w-6 sm:w-7 h-6 sm:h-7 text-blue-600" />
               </div>
               <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
-                v1.4.2 Signed
+                v1.5.0 Signed
               </span>
             </div>
 
@@ -712,7 +712,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <a href="#downloads" className="hover:text-blue-600 font-semibold">
             Downloads
           </a>
-          <span className="font-mono text-[11px] text-slate-400">v1.4.2 Production Signed</span>
+          <span className="font-mono text-[11px] text-slate-400">v1.5.0 Production Signed</span>
         </div>
       </footer>
     </div>

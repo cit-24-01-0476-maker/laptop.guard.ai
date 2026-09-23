@@ -15,6 +15,23 @@
           "value": "attachment; filename=\"LaptopGuard-AI.apk\""
         }
       ]
+    },
+    {
+      "source": "/(index.html|version.json|manifest.json|favicon.svg|$)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
     }
   ],
   "rewrites": [

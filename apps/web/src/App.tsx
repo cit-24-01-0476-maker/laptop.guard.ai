@@ -24,6 +24,7 @@ import { LostModeModal } from './components/Modals/LostModeModal';
 import { CriticalAlertModal } from './components/Modals/CriticalAlertModal';
 import { PairingModal } from './components/Modals/PairingModal';
 import { AuthModal } from './components/Modals/AuthModal';
+import { AutoUpdateBanner } from './components/AutoUpdateBanner';
 
 const checkIsAppMode = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -258,6 +259,7 @@ export const AppContent: React.FC = () => {
 export default function App() {
   return (
     <SecurityProvider>
+      <AutoUpdateBanner />
       <AppContent />
     </SecurityProvider>
   );

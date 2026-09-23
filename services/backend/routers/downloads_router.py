@@ -7,25 +7,29 @@ from fastapi.responses import Response, JSONResponse, FileResponse, RedirectResp
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["Downloads & Updates"])
 
-CURRENT_VERSION = "1.4.2"
-RELEASE_DATE = "2026-09-22"
+CURRENT_VERSION = "1.5.0"
+RELEASE_DATE = "2026-09-23"
 
 @router.get("/manifest")
-async def get_version_manifest():
+async def get_version_manifest(response: Response):
     """
     Returns the latest software version manifest.
-    Used by the Mobile App and Desktop Agent to detect and apply Over-The-Air (OTA) updates automatically.
+    Used by the Mobile App, Web App, and Desktop Agent to detect and apply Over-The-Air (OTA) updates automatically.
     """
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     return {
         "latest_version": CURRENT_VERSION,
         "release_date": RELEASE_DATE,
         "auto_update_supported": True,
         "force_update": False,
-        "release_notes": "Added 15s smart auto-silence siren, iOS liquid glass light UI, and low-latency webcam streaming.",
+        "release_notes": "Next-Gen iOS Liquid Glass UI, Cyber-Shield Brand Icon & Seamless Auto-Updater.",
         "download_urls": {
-            "windows_agent": "/api/v1/downloads/windows-agent",
-            "windows_exe": "/api/v1/downloads/windows-exe",
-            "android_apk": "/api/v1/downloads/android-apk"
+            "windows_setup": "/downloads/windows-setup",
+            "windows_exe": "/downloads/windows-exe",
+            "windows_agent": "/downloads/windows-agent",
+            "android_apk": "/downloads/android-apk"
         }
     }
 

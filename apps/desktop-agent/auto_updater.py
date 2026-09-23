@@ -18,8 +18,8 @@ import requests
 
 logger = logging.getLogger("LaptopGuard.Updater")
 
-APP_VERSION = "1.4.2"
-UPDATE_INTERVAL_SECONDS = 1800  # Check every 30 minutes
+APP_VERSION = "1.5.0"
+UPDATE_INTERVAL_SECONDS = 900  # Check every 15 minutes
 
 
 def is_version_newer(latest: str, current: str) -> bool:
@@ -155,7 +155,7 @@ exit
         """Starts a persistent daemon thread that checks every 30 minutes."""
         def _loop():
             # Initial delay after app launch so network initializes
-            time.sleep(15)
+            time.sleep(5)
             while True:
                 self.check_for_updates(manual=False)
                 time.sleep(UPDATE_INTERVAL_SECONDS)

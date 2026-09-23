@@ -62,7 +62,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'map' | 'alerts' | 'profile'>('home');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [currentVersion, setCurrentVersion] = useState('1.4.2');
+  const [currentVersion, setCurrentVersion] = useState('1.5.0');
   const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
@@ -140,8 +140,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       const res = await fetch(getDownloadUrl('manifest'));
       const data = await res.json();
       if (data.latest_version) {
-        setCurrentVersion(data.latest_version);
-        if (data.latest_version !== '1.4.2') {
+        if (data.latest_version !== currentVersion) {
           if (Capacitor.isNativePlatform()) {
             setUpdateMessage(`✨ Update v${data.latest_version} available! Tap to download.`);
           } else {
@@ -698,7 +697,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   <Smartphone className="w-4 h-4 text-emerald-600" />
                   <div>
                     <span className="font-bold text-slate-800 block">Android APK Package</span>
-                    <span className="text-[10px] text-slate-500">Version 1.4.2 • 15.8 MB</span>
+                    <span className="text-[10px] text-slate-500">Version 1.5.0 • 15.8 MB</span>
                   </div>
                 </div>
                 <Download className="w-4 h-4 text-slate-500" />
