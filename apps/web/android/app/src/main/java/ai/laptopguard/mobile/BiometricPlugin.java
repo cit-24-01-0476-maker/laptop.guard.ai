@@ -21,20 +21,16 @@ public class BiometricPlugin extends Plugin {
     public void isAvailable(PluginCall call) {
         try {
             BiometricManager biometricManager = BiometricManager.from(getContext());
-            int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
-            int canAuthenticate = biometricManager.canAuthenticate(authenticators);
-
+            int canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG);
             JSObject ret = new JSObject();
-            if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
-                ret.put("available", true);
-                ret.put("reason", "SUCCESS");
-            } else {
-                ret.put("available", false);
-                ret.put("reason", "CODE_" + canAuthenticate);
-            }
+            ret.put("available", canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS);
+            ret.put("code", canAuthenticate);
             call.resolve(ret);
         } catch (Exception e) {
-            call.reject("Failed to check biometric availability: " + e.getMessage());
+            JSObject ret = new JSObject();
+            ret.put("available", false);
+            ret.put("error", e.getMessage());
+            call.resolve(ret);
         }
     }
 
@@ -46,7 +42,10 @@ public class BiometricPlugin extends Plugin {
 
         FragmentActivity activity = getActivity();
         if (activity == null) {
-            call.reject("Host Activity is null");
+            JSObject ret = new JSObject();
+            ret.put("authenticated", false);
+            ret.put("error", "Host Activity is null");
+            call.resolve(ret);
             return;
         }
 
@@ -57,7 +56,11 @@ public class BiometricPlugin extends Plugin {
                     @Override
                     public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                         super.onAuthenticationError(errorCode, errString);
-                        call.reject(errString.toString(), String.valueOf(errorCode));
+                        JSObject ret = new JSObject();
+                        ret.put("authenticated", false);
+                        ret.put("error", errString.toString());
+                        ret.put("code", errorCode);
+                        call.resolve(ret);
                     }
 
                     @Override
@@ -74,16 +77,17 @@ public class BiometricPlugin extends Plugin {
                     }
                 });
 
-                BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                BiometricPrompt.PromptInfo.Builder builder = new BiometricPrompt.PromptInfo.Builder()
                         .setTitle(title)
                         .setSubtitle(subtitle)
-                        .setNegativeButtonText(negativeButtonText)
-                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK)
-                        .build();
+                        .setNegativeButtonText(negativeButtonText);
 
-                biometricPrompt.authenticate(promptInfo);
+                biometricPrompt.authenticate(builder.build());
             } catch (Exception e) {
-                call.reject("Biometric prompt error: " + e.getMessage());
+                JSObject ret = new JSObject();
+                ret.put("authenticated", false);
+                ret.put("error", e.getMessage());
+                call.resolve(ret);
             }
         });
     }
