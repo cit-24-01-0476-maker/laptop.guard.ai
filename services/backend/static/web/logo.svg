@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <filter id="coreGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Liquid Glass Shield Gradients -->
+    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="35%" stop-color="#38BDF8" />
+      <stop offset="70%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+
+    <linearGradient id="shieldBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="40%" stop-color="#0B1E48" />
+      <stop offset="100%" stop-color="#030E26" />
+    </linearGradient>
+
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="50%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+
+    <linearGradient id="laptopGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="50%" stop-color="#0369A1" />
+      <stop offset="100%" stop-color="#075985" />
+    </linearGradient>
+
+    <linearGradient id="specular" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.1" />
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient Outer Glow Aura -->
+  <path d="M256 36 L430 92 C430 260 354 394 256 468 C158 394 82 260 82 92 Z" 
+        fill="url(#shieldBorder)" opacity="0.35" filter="url(#glow)" />
+
+  <!-- Main Shield Body -->
+  <path d="M256 42 L422 96 C422 254 348 382 256 454 C164 382 90 254 90 96 Z" 
+        fill="url(#shieldBody)" 
+        stroke="url(#shieldBorder)" 
+        stroke-width="8" 
+        stroke-linejoin="round" />
+
+  <!-- Inner Cyber Contour Line -->
+  <path d="M256 64 L398 110 C398 244 334 354 256 418 C178 354 114 244 114 110 Z" 
+        fill="none" 
+        stroke="#0284C7" 
+        stroke-width="2.5" 
+        stroke-dasharray="14 8" 
+        opacity="0.65" />
+
+  <!-- Cyber Node Radar Rings -->
+  <circle cx="256" cy="235" r="95" fill="none" stroke="#38BDF8" stroke-width="1.5" opacity="0.3" />
+  <circle cx="256" cy="235" r="65" fill="none" stroke="#00F2FE" stroke-width="2" stroke-dasharray="8 6" opacity="0.5" />
+  <circle cx="256" cy="235" r="38" fill="none" stroke="#38BDF8" stroke-width="1" opacity="0.4" />
+
+  <!-- Stylized Laptop Sentinel Base & Deck -->
+  <g id="laptop-sentinel">
+    <!-- Screen Outer Shell -->
+    <rect x="174" y="160" width="164" height="112" rx="14" fill="#0F172A" stroke="url(#shieldBorder)" stroke-width="3" />
+    <!-- Screen Display Area -->
+    <rect x="184" y="170" width="144" height="92" rx="8" fill="url(#screenGrad)" />
+    
+    <!-- AI Sentinel Shield Icon inside Screen -->
+    <path d="M256 182 L290 196 C290 226 276 244 256 254 C236 244 222 226 222 196 Z" 
+          fill="url(#coreGrad)" 
+          filter="url(#coreGlow)" />
+    <path d="M256 195 L274 205 C274 222 265 233 256 240 C247 233 238 222 238 205 Z" 
+          fill="#FFFFFF" 
+          opacity="0.9" />
+
+    <!-- Screen Camera & LED Indicator -->
+    <circle cx="256" cy="165" r="2.5" fill="#00F2FE" />
+    <circle cx="265" cy="165" r="1.5" fill="#10B981" />
+
+    <!-- Laptop Keyboard Deck Base -->
+    <path d="M152 280 L360 280 L346 298 L166 298 Z" fill="url(#laptopGrad)" stroke="#64748B" stroke-width="2" />
+    <!-- Trackpad Notch -->
+    <rect x="236" y="284" width="40" height="7" rx="3" fill="#94A3B8" />
+  </g>
+
+  <!-- Specular Light Reflection Sweep (Glass Effect) -->
+  <path d="M256 46 L416 98 C416 190 380 270 320 320 C220 220 200 130 100 102 L256 46 Z" 
+        fill="url(#specular)" 
+        pointer-events="none" />
+
+  <!-- Cyber Node Crosshairs & Dots -->
+  <circle cx="160" cy="130" r="4" fill="#00F2FE" filter="url(#coreGlow)" />
+  <circle cx="352" cy="130" r="4" fill="#00F2FE" filter="url(#coreGlow)" />
+  <circle cx="256" cy="370" r="5" fill="#10B981" filter="url(#coreGlow)" />
+
+  <!-- Watchdog Beacon Beam Pulsing Rings -->
+  <line x1="256" y1="298" x2="256" y2="365" stroke="#10B981" stroke-width="2" stroke-dasharray="4 4" opacity="0.8" />
+</svg>

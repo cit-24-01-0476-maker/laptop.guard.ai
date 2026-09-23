@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Lock, Mail, User, ArrowRight, AlertTriangle, Sparkles, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useSecurity } from '../context/SecurityContext';
+import { BrandLogo } from '../components/BrandLogo';
 
 interface MobileAuthViewProps {
   onSuccess: () => void;
@@ -64,25 +65,8 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
       <div className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
 
       {/* 1. App Top Branding */}
-      <div className="w-full max-w-sm flex flex-col items-center text-center mt-4 z-10">
-        <div className="relative mb-4">
-          <div className="w-18 h-18 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 p-[2px] shadow-xl shadow-blue-500/25">
-            <div className="w-full h-full bg-slate-900 rounded-[22px] flex items-center justify-center">
-              <Shield className="w-9 h-9 text-cyan-400 stroke-[2.2] animate-pulse" />
-            </div>
-          </div>
-          <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-500/90 text-[9px] font-black tracking-widest text-slate-950 uppercase border border-emerald-300/40">
-            Sentinel
-          </div>
-        </div>
-
-        <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-1.5 justify-center">
-          <span>LAPTOPGUARD</span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">AI</span>
-        </h1>
-        <p className="text-xs text-slate-400 font-medium mt-1">
-          Autonomous Mobile Laptop Security & Fleet Controller
-        </p>
+      <div className="w-full max-w-sm flex flex-col items-center text-center mt-6 mb-2 z-10">
+        <BrandLogo size="lg" subtitle="Autonomous Mobile Security & Remote Controller" className="flex-col !items-center text-center" />
       </div>
 
       {/* 2. Full-Screen Auth Card */}

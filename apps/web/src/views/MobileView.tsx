@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
+import { BrandLogo } from '../components/BrandLogo';
 
 interface MobileViewProps {
   onBackToLanding: () => void;
@@ -204,21 +205,11 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       {/* 1. Mobile Top Frosted Glass Status Header */}
       <header className="w-full max-w-md sticky top-2 z-40 px-3">
         <div className="ios-jelly-card px-4 py-2.5 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
-              <Shield className="w-4 h-4 stroke-[2.5]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black tracking-tight text-slate-900">LAPTOPGUARD</span>
-                <span className="px-1.5 py-0.2 bg-blue-100/80 text-blue-700 text-[9px] font-black rounded-md border border-blue-200/60">
-                  REMOTE
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
-                <span className={`w-1.5 h-1.5 rounded-full ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-                <span>{isWsConnected ? 'Cloud Guard Live' : 'Syncing...'}</span>
-              </div>
+          <div className="flex items-center gap-2">
+            <BrandLogo size="sm" subtitle={false} />
+            <div className="flex items-center gap-1 text-[9px] text-slate-500 font-medium pl-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+              <span className="hidden xs:inline">{isWsConnected ? 'Live' : 'Sync'}</span>
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Bell, Moon, Sun, Search, VolumeX, Home, Smartphone, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api } from '../services/api';
+import { BrandLogo } from './BrandLogo';
 
 interface NavbarProps {
   currentView: string;
@@ -45,25 +46,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigateHome, onN
   return (
     <header className="h-18 px-5 sm:px-6 jelly-card flex items-center justify-between shadow-sm">
       {/* 1. Left Brand */}
-      <div
+      <BrandLogo
+        size="md"
+        subtitle="Sovereign Hardware Defense"
         onClick={onNavigateHome}
-        className="flex items-center gap-3 cursor-pointer group"
-        title="Go to Intro Website"
-      >
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-          <Shield className="w-5 h-5 stroke-[2.5]" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold tracking-tight text-lg text-slate-900 font-sans">
-              LaptopGuard<span className="text-blue-600 font-mono text-sm ml-1 px-1.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200">AI</span>
-            </span>
-          </div>
-          <p className="text-[10px] text-slate-400 tracking-wider uppercase font-medium hidden sm:block">
-            Protect Your Laptop. Wherever You Go.
-          </p>
-        </div>
-      </div>
+      />
 
       {/* 2. Center Pill Search Bar (iOS Floating Bubble Style) */}
       <div className="hidden md:flex items-center gap-2.5 bg-white/70 hover:bg-white/95 focus-within:bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all border border-slate-200/90 rounded-full px-4 py-2 w-72 lg:w-96 shadow-sm">
