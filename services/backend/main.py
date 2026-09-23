@@ -2,6 +2,8 @@ import json
 import uuid
 import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -350,6 +352,12 @@ async def client_websocket_endpoint(websocket: WebSocket, user_id: str):
 
     except WebSocketDisconnect:
         hub.unregister_client(user_id, websocket)
+
+# Mount compiled web frontend at root (serves web app if visited directly on Render)
+root_dir = Path(__file__).resolve().parents[2]
+dist_dir = root_dir / "apps" / "web" / "dist"
+if dist_dir.exists():
+    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
