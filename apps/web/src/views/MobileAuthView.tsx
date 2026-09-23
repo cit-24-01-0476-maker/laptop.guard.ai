@@ -57,7 +57,15 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0F172A] text-white flex flex-col items-center justify-between px-5 py-8 relative overflow-hidden font-sans select-none">
+    <div 
+      className="min-h-screen w-full bg-[#0F172A] text-white flex flex-col items-center justify-between px-5 relative overflow-hidden font-sans select-none"
+      style={{
+        paddingTop: 'max(24px, env(safe-area-inset-top, 24px))',
+        paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
+        paddingLeft: 'max(20px, env(safe-area-inset-left, 20px))',
+        paddingRight: 'max(20px, env(safe-area-inset-right, 20px))'
+      }}
+    >
       
       {/* Dynamic Background Glow Rings */}
       <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />

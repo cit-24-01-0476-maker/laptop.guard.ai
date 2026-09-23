@@ -194,7 +194,15 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   }, [isAlarmActive]);
 
   return (
-    <div className="min-h-screen bg-[#F0F4FA] text-slate-800 flex flex-col items-center justify-between pb-28 relative select-none font-sans overflow-x-hidden">
+    <div 
+      className="min-h-screen bg-[#F0F4FA] text-slate-800 flex flex-col items-center justify-between relative select-none font-sans overflow-x-hidden"
+      style={{
+        paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
+        paddingBottom: 'max(96px, calc(80px + env(safe-area-inset-bottom, 16px)))',
+        paddingLeft: 'max(8px, env(safe-area-inset-left, 8px))',
+        paddingRight: 'max(8px, env(safe-area-inset-right, 8px))'
+      }}
+    >
       
       {/* Soft Ambient Liquid Glow Mesh */}
       <div className="ambient-liquid-glow pointer-events-none">
@@ -756,7 +764,10 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       </main>
 
       {/* 3. Floating iOS Jelly Glass Bottom Navigation Bar */}
-      <nav className="fixed bottom-3 left-3 right-3 max-w-md mx-auto ios-frosted-nav rounded-[30px] px-2.5 py-2 z-40 flex items-center justify-around shadow-2xl transition-all">
+      <nav 
+        className="fixed left-3 right-3 max-w-md mx-auto ios-frosted-nav rounded-[30px] px-2.5 py-2 z-40 flex items-center justify-around shadow-2xl transition-all"
+        style={{ bottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}
+      >
         
         <button
           onClick={() => setActiveTab('home')}
