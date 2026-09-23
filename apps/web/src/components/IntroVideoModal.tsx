@@ -131,10 +131,10 @@ export const IntroVideoModal: React.FC<IntroVideoModalProps> = ({
     <div 
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl text-white select-none overflow-hidden font-sans"
       style={{
-        paddingTop: 'max(14px, env(safe-area-inset-top, 14px))',
-        paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
-        paddingLeft: 'max(14px, env(safe-area-inset-left, 14px))',
-        paddingRight: 'max(14px, env(safe-area-inset-right, 14px))'
+        paddingTop: 'max(56px, env(safe-area-inset-top, 56px))',
+        paddingBottom: 'max(36px, env(safe-area-inset-bottom, 36px))',
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 16px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 16px))'
       }}
     >
       
@@ -164,10 +164,9 @@ export const IntroVideoModal: React.FC<IntroVideoModalProps> = ({
         {/* 1. TOP VIDEO PLAYER HUD BAR */}
         <div className="relative z-30 flex items-center justify-between gap-2 pb-3 border-b border-white/10">
           {/* Cyber Status Badge */}
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-[10px] sm:text-xs font-mono text-cyan-300 shadow-xs flex-shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-bold tracking-wider">SENTINEL HUD</span>
-            <span className="text-cyan-500/60 hidden sm:inline">| v1.5</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/70 border border-cyan-400/40 text-[10px] font-mono text-cyan-300 shadow-xs flex-shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-bold tracking-wider">SENTINEL AI</span>
           </div>
 
           {/* Video Timestamp */}

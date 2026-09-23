@@ -197,10 +197,10 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     <div 
       className="min-h-screen bg-[#F0F4FA] text-slate-800 flex flex-col items-center justify-between relative select-none font-sans overflow-x-hidden"
       style={{
-        paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
-        paddingBottom: 'max(96px, calc(80px + env(safe-area-inset-bottom, 16px)))',
-        paddingLeft: 'max(8px, env(safe-area-inset-left, 8px))',
-        paddingRight: 'max(8px, env(safe-area-inset-right, 8px))'
+        paddingTop: 'max(52px, env(safe-area-inset-top, 52px))',
+        paddingBottom: 'max(140px, calc(110px + env(safe-area-inset-bottom, 24px)))',
+        paddingLeft: 'max(10px, env(safe-area-inset-left, 10px))',
+        paddingRight: 'max(10px, env(safe-area-inset-right, 10px))'
       }}
     >
       
@@ -212,7 +212,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       </div>
 
       {/* 1. Mobile Top Frosted Glass Status Header */}
-      <header className="w-full max-w-md sticky top-2 z-40 px-3">
+      <header className="w-full max-w-md sticky top-0 z-40 px-3">
         <div className="ios-jelly-card px-4 py-2.5 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <BrandLogo size="sm" subtitle={false} />
