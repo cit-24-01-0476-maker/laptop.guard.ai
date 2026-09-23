@@ -37,6 +37,31 @@ def wake_screen():
     except Exception as e:
         logger.error(f"Error waking display: {e}")
 
+def focus_pin_box():
+    """Guarantees the PIN/Password text box has keyboard focus on Windows 10/11."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+
+        w = user32.GetSystemMetrics(0)
+        h = user32.GetSystemMetrics(1)
+        # Windows 11 PIN / password entry field is positioned at horizontal center and ~58% vertical height
+        cx = w // 2
+        cy = int(h * 0.58)
+
+        user32.SetCursorPos(cx, cy)
+        time.sleep(0.05)
+        # Left click down and up
+        user32.mouse_event(0x0002, 0, 0, 0, 0)
+        time.sleep(0.05)
+        user32.mouse_event(0x0004, 0, 0, 0, 0)
+        time.sleep(0.1)
+        logger.info(f"Focused credential input box at ({cx}, {cy}).")
+    except Exception as e:
+        logger.error(f"Error focusing PIN box: {e}")
+
 def inject_hardware_keystrokes(text: str):
     """
     Injects authentic hardware-level virtual key codes and scan codes into Windows LogonUI.
@@ -58,13 +83,13 @@ def inject_hardware_keystrokes(text: str):
         back_scan = user32.MapVirtualKeyW(VK_BACK, 0)
         enter_scan = user32.MapVirtualKeyW(VK_RETURN, 0)
 
-        # 1. Send Backspace 3 times to clear any space or stray characters inserted during swipe
-        for _ in range(3):
+        # 1. Send Backspace 4 times to clear any space or stray characters inserted during swipe
+        for _ in range(4):
             user32.keybd_event(VK_BACK, back_scan, 0, 0)
             user32.keybd_event(VK_BACK, back_scan, KEYEVENTF_KEYUP, 0)
             time.sleep(0.03)
 
-        time.sleep(0.08)
+        time.sleep(0.1)
 
         # 2. Type each character using real hardware scan codes + virtual keys
         for ch in text:
@@ -76,12 +101,12 @@ def inject_hardware_keystrokes(text: str):
 
                 if shift_state:
                     user32.keybd_event(VK_SHIFT, shift_scan, 0, 0)
-                    time.sleep(0.02)
+                    time.sleep(0.03)
 
                 user32.keybd_event(vk, scan, 0, 0)
-                time.sleep(0.03)
+                time.sleep(0.04)
                 user32.keybd_event(vk, scan, KEYEVENTF_KEYUP, 0)
-                time.sleep(0.02)
+                time.sleep(0.03)
 
                 if shift_state:
                     user32.keybd_event(VK_SHIFT, shift_scan, KEYEVENTF_KEYUP, 0)
@@ -91,9 +116,9 @@ def inject_hardware_keystrokes(text: str):
                 code = ord(ch)
                 user32.keybd_event(0, code, KEYEVENTF_UNICODE, 0)
                 user32.keybd_event(0, code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0)
-                time.sleep(0.04)
+                time.sleep(0.05)
 
-            time.sleep(0.04)
+            time.sleep(0.05)
 
         # 3. Pause before submitting Enter
         time.sleep(0.2)
@@ -115,8 +140,9 @@ def unlock_workstation(pin_or_password: Optional[str] = None) -> bool:
     Executes remote biometric unlock routine:
     1. Stops any security alarm if ringing.
     2. Wakes display and brings up Windows PIN/Password box.
-    3. Waits 1.2s for lock screen swipe animation to finish.
-    4. Types hardware-scancode credentials and submits Enter.
+    3. Waits 1.3s for lock screen swipe animation to finish.
+    4. Clicks input box to guarantee keyboard focus.
+    5. Types hardware-scancode credentials and submits Enter.
     """
     try:
         # Stop alarm if playing
@@ -126,13 +152,18 @@ def unlock_workstation(pin_or_password: Optional[str] = None) -> bool:
         except Exception:
             pass
 
-        logger.info("Executing remote unlock routine...")
+        logger.info(f"Executing remote unlock routine (Credential length: {len(pin_or_password) if pin_or_password else 0})...")
         wake_screen()
 
         if pin_or_password:
-            # Crucial: Wait 1.2s for Windows lock screen swipe animation to finish and focus password field
-            logger.info("Waiting 1.2s for lock screen slide animation to focus input field...")
-            time.sleep(1.2)
+            # 1. Wait 1.3s for Windows lock screen swipe animation to finish
+            logger.info("Waiting 1.3s for lock screen slide animation to settle...")
+            time.sleep(1.3)
+
+            # 2. Click PIN box to guarantee focus
+            focus_pin_box()
+
+            # 3. Inject hardware keystrokes
             inject_hardware_keystrokes(pin_or_password)
 
         logger.info("Remote workstation unlock routine completed successfully.")
