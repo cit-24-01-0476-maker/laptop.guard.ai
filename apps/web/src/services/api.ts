@@ -29,13 +29,13 @@ export const getApiBaseUrl = (): string => {
 
 export const getDownloadUrl = (endpoint: string): string => {
   const clean = endpoint.replace(/^\//, '');
-  if (clean === 'windows-setup') {
-    return 'https://laptopguard-api.onrender.com/downloads/windows-setup';
-  }
-  if (clean === 'windows-exe') {
+  if (clean === 'windows-setup' || clean === 'windows-exe') {
     return 'https://laptopguard-api.onrender.com/downloads/windows-exe';
   }
   if (clean === 'android-apk') {
+    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
+      return '/LaptopGuard-AI.apk';
+    }
     return 'https://laptopguard-api.onrender.com/downloads/android-apk';
   }
   if (clean === 'manifest') {
