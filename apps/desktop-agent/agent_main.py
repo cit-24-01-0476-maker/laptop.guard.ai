@@ -23,7 +23,6 @@ from monitors.network_monitor import NetworkMonitor
 from monitors.movement_detector import MovementDetector
 from monitors.login_monitor import LoginMonitor
 from actions.remote_lock import lock_workstation
-from actions.remote_unlock import unlock_workstation
 from actions.alarm_player import alarm_controller
 from actions.camera_streamer import camera_streamer
 from actions.snapshot_taker import take_security_snapshot
@@ -220,12 +219,6 @@ class LaptopSecurityAgent:
             success = lock_workstation()
             await self._report_command_result(cmd_id, "EXECUTED" if success else "FAILED")
             self.on_security_event("REMOTE_LOCK", "INFO", {"message": "Remote lock executed successfully."})
-
-        elif cmd_type in ("UNLOCK_DEVICE", "UNLOCK_WORKSTATION", "UNLOCK"):
-            pin_or_pw = command_envelope.get("payload", {}).get("pin") or command_envelope.get("payload", {}).get("password")
-            success = unlock_workstation(pin_or_pw)
-            await self._report_command_result(cmd_id, "EXECUTED" if success else "FAILED")
-            self.on_security_event("REMOTE_UNLOCK", "INFO", {"message": "Workstation unlocked via Phone Biometrics."})
 
         elif cmd_type in ("PLAY_ALARM", "TRIGGER_ALARM", "ALARM", "SOUND_ALARM", "START_ALARM"):
             alarm_controller.start_alarm()

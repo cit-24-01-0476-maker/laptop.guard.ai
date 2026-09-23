@@ -30,12 +30,13 @@ export const getApiBaseUrl = (): string => {
 export const getDownloadUrl = (endpoint: string): string => {
   const clean = endpoint.replace(/^\//, '');
   if (clean === 'windows-exe') {
-    // Deliver the official binary directly from the high-speed GitHub Release CDN
-    return 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.exe';
+    return 'https://laptopguard-api.onrender.com/downloads/windows-exe';
   }
   if (clean === 'android-apk') {
-    // Deliver the compiled Android Mobile APK directly from GitHub Release CDN (fast & reliable)
-    return 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk';
+    return 'https://laptopguard-api.onrender.com/downloads/android-apk';
+  }
+  if (clean === 'manifest') {
+    return 'https://laptopguard-api.onrender.com/api/v1/downloads/manifest';
   }
   const base = getApiBaseUrl().replace(/\/api\/v1$/, '');
   return `${base}/api/v1/downloads/${clean}`;

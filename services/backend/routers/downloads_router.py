@@ -96,16 +96,19 @@ async def download_windows_exe():
     Otherwise, redirects to GitHub Release binary.
     """
     root = Path(__file__).resolve().parents[3]
-    exe_path = root / "dist" / "LaptopGuard-AI.exe"
-    if not exe_path.exists():
-        exe_path = root / "dist" / "LaptopGuard-AI" / "LaptopGuard-AI.exe"
-    
-    if exe_path.exists():
-        return FileResponse(
-            path=str(exe_path),
-            filename=f"LaptopGuard-AI-v{CURRENT_VERSION}.exe",
-            media_type="application/octet-stream"
-        )
+    candidate_paths = [
+        root / "services" / "backend" / "static" / "LaptopGuard-AI.exe",
+        Path(__file__).resolve().parents[1] / "static" / "LaptopGuard-AI.exe",
+        root / "dist" / "LaptopGuard-AI.exe",
+        root / "apps" / "desktop-agent" / "dist" / "LaptopGuard-AI.exe"
+    ]
+    for exe_path in candidate_paths:
+        if exe_path.exists():
+            return FileResponse(
+                path=str(exe_path),
+                filename=f"LaptopGuard-AI-v{CURRENT_VERSION}.exe",
+                media_type="application/octet-stream"
+            )
     
     # Fallback to GitHub Release permanent download link
     release_url = f"https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v{CURRENT_VERSION}/LaptopGuard-AI.exe"

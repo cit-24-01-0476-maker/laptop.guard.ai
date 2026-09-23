@@ -30,6 +30,7 @@ class ModernAgentGUI:
         on_stop_alarm: Optional[Callable] = None,
         on_lock_device: Optional[Callable] = None,
         on_authenticated: Optional[Callable] = None,
+        on_check_update: Optional[Callable] = None,
         device_name: str = "Dell G15 5530"
     ):
         self.on_arm = on_arm
@@ -39,6 +40,7 @@ class ModernAgentGUI:
         self.on_stop_alarm = on_stop_alarm
         self.on_lock_device = on_lock_device
         self.on_authenticated = on_authenticated
+        self.on_check_update = on_check_update
         self.device_name = device_name
         
         self.root: Optional[ctk.CTk] = None
@@ -136,6 +138,20 @@ class ModernAgentGUI:
         # Right Header User Profile & Cloud Badge
         header_right = ctk.CTkFrame(header, fg_color="transparent")
         header_right.pack(side="right", padx=20, pady=15)
+
+        if self.on_check_update:
+            update_btn = ctk.CTkButton(
+                header_right,
+                text="🔄 v1.4.2 Check",
+                width=90,
+                height=26,
+                font=ctk.CTkFont(size=11, weight="bold"),
+                fg_color="#1E293B",
+                hover_color="#334155",
+                corner_radius=8,
+                command=self.on_check_update
+            )
+            update_btn.pack(side="left", padx=6)
 
         self.user_label = ctk.CTkLabel(
             header_right,
@@ -473,7 +489,8 @@ class ModernAgentGUI:
             ("📡 Wi-Fi BSSID Network Sentinel", "Monitors active SSID changes. Triggers alert on unfamiliar network.", True),
             ("⏱️ Smart 15-Second Auto-Silence", "Limits deterrence siren to 15 seconds to prevent non-stop noise.", True),
             ("🔊 Volume Unmute & Auto-Boost", "Win32 VK_VOLUME_UP boost ensures alarm is audible at max level.", True),
-            ("🔒 Remote LockWorkStation Instruction", "Signed authenticated remote lock via WebSocket.", True)
+            ("🔒 Remote LockWorkStation Instruction", "Signed authenticated remote lock via WebSocket.", True),
+            ("🔄 Over-The-Air Automatic Updater", "Pulls new versions silently in background without reinstalling.", True)
         ]
 
         for name, desc, state in items:
@@ -486,6 +503,19 @@ class ModernAgentGUI:
 
             desc_lbl = ctk.CTkLabel(row, text=desc, font=ctk.CTkFont(size=11), text_color="#64748B")
             desc_lbl.pack(anchor="w", padx=28)
+
+        if self.on_check_update:
+            btn_upd = ctk.CTkButton(
+                box,
+                text="🔄 Check for Software Updates Now",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                fg_color="#0284C7",
+                hover_color="#0369A1",
+                height=36,
+                corner_radius=10,
+                command=self.on_check_update
+            )
+            btn_upd.pack(anchor="w", padx=20, pady=(15, 10))
 
     def _build_camera_tab(self, parent):
         box = ctk.CTkFrame(parent, corner_radius=16, fg_color=("#F8FAFC", "#111827"))

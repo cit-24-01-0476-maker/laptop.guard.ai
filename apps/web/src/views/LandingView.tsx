@@ -38,32 +38,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
 
   const handleDownloadExe = () => {
-    const link = document.createElement('a');
-    link.href = getDownloadUrl('windows-exe');
-    link.setAttribute('download', 'LaptopGuard-AI.exe');
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    window.location.href = getDownloadUrl('windows-exe');
   };
 
   const handleDownloadWindows = () => {
-    const link = document.createElement('a');
-    link.href = getDownloadUrl('windows-agent');
-    link.setAttribute('download', 'LaptopGuard-Windows-Agent-v1.4.2.zip');
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    window.location.href = getDownloadUrl('windows-agent');
   };
 
   const handleDownloadAndroid = () => {
-    const link = document.createElement('a');
-    link.href = 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk';
-    link.setAttribute('download', 'LaptopGuard-AI.apk');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    window.location.href = getDownloadUrl('android-apk');
   };
 
   return (
@@ -176,24 +159,32 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 onClick={onLaunchConsole}
                 className="jelly-button flex items-center gap-2 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold shadow-xl shadow-blue-500/25 active:scale-[0.98] cursor-pointer"
               >
-                <span>{isAuthenticated ? 'Open Sentinel Dashboard' : 'Launch Cloud Dashboard (Sign In)'}</span>
+                <span>{isAuthenticated ? 'Open Sentinel Dashboard' : 'Launch Dashboard'}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
 
-              <a
-                href="#downloads"
-                className="jelly-button flex items-center gap-2 py-3.5 px-6 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 text-sm font-bold border border-slate-200/90 shadow-sm cursor-pointer"
+              <button
+                onClick={handleDownloadExe}
+                className="jelly-button flex items-center gap-2 py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 text-sm font-bold border border-slate-200/90 shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4 text-blue-600" />
-                <span>Download Apps & APK</span>
-              </a>
+                <span>Windows App (.exe)</span>
+              </button>
+
+              <button
+                onClick={handleDownloadAndroid}
+                className="jelly-button flex items-center gap-2 py-3.5 px-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-sm font-bold border border-emerald-200 shadow-sm cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>Android App (.apk)</span>
+              </button>
 
               <button
                 onClick={onOpenMobileView}
-                className="jelly-button flex items-center gap-2 py-3.5 px-5 rounded-2xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 text-sm font-bold border border-cyan-200 shadow-sm cursor-pointer"
+                className="jelly-button flex items-center gap-2 py-3.5 px-4 rounded-2xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 text-sm font-bold border border-cyan-200 shadow-sm cursor-pointer"
               >
                 <Smartphone className="w-4 h-4 text-cyan-600" />
-                <span>Open Phone Remote</span>
+                <span>Phone View</span>
               </button>
             </div>
 
@@ -551,14 +542,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
 
             <div className="flex gap-3">
-              <a
-                href="https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk"
-                download="LaptopGuard-AI.apk"
+              <button
+                onClick={handleDownloadAndroid}
                 className="jelly-button flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 active:scale-[0.98] cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Android APK</span>
-              </a>
+              </button>
               <button
                 onClick={onOpenMobileView}
                 className="jelly-button py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"

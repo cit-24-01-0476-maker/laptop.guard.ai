@@ -38,12 +38,12 @@ from monitors.network_monitor import NetworkMonitor
 from monitors.movement_detector import MovementDetector
 from monitors.login_monitor import LoginMonitor
 from actions.remote_lock import lock_workstation
-from actions.remote_unlock import unlock_workstation
 from actions.alarm_player import alarm_controller
 from actions.camera_streamer import camera_streamer
 from actions.snapshot_taker import take_security_snapshot
 from offline_queue import OfflineEventQueue
 from modern_gui import ModernAgentGUI
+from auto_updater import DesktopAutoUpdater, APP_VERSION
 from packages.security.signer import verify_command_envelope
 import websockets
 
@@ -70,6 +70,12 @@ class LaptopGuardDesktopApp:
         
         self.offline_queue = OfflineEventQueue(str(LOCAL_QUEUE_FILE))
         
+        # Auto-Updater
+        self.updater = DesktopAutoUpdater(
+            backend_url=BACKEND_HTTP_URL,
+            on_status=self._on_updater_status
+        )
+
         # Hardware Monitors
         self.power_monitor = PowerMonitor(on_power_event=self.on_security_event)
         self.network_monitor = NetworkMonitor(on_network_event=self.on_security_event)
@@ -88,8 +94,12 @@ class LaptopGuardDesktopApp:
             on_stop_alarm=alarm_controller.stop_alarm,
             on_lock_device=self.lock_workstation_now,
             on_authenticated=self._on_user_authenticated,
+            on_check_update=lambda: self.updater.check_for_updates(manual=True),
             device_name=self.device_name
         )
+
+    def _on_updater_status(self, msg: str):
+        self.gui.log_event(msg)
 
     def _on_user_authenticated(self, user_id: str, token: str):
         logger.info(f"User authenticated on desktop: {user_id}")
@@ -205,8 +215,8 @@ class LaptopGuardDesktopApp:
 
         if action in ("LOCK_DEVICE", "LOCK"):
             self.lock_workstation_now()
-        elif action in ("UNLOCK", "UNLOCK_DEVICE", "UNLOCK_WORKSTATION"):
-            unlock_workstation(payload.get("pin") or payload.get("password"))
+        elif action in ("CHECK_UPDATE", "TRIGGER_UPDATE", "UPDATE"):
+            self.updater.check_for_updates(manual=True)
         elif action in ("PLAY_ALARM", "TRIGGER_ALARM", "ALARM", "SOUND_ALARM"):
             alarm_controller.play_alarm(duration=15)
         elif action in ("STOP_ALARM", "SILENCE_ALARM", "SILENCE"):
@@ -294,6 +304,7 @@ class LaptopGuardDesktopApp:
 
     def start(self):
         self._start_power_watchdog()
+        self.updater.start_background_checker()
 
         def run_async():
             self.loop = asyncio.new_event_loop()
