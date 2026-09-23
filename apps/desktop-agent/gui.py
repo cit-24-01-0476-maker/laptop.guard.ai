@@ -25,6 +25,8 @@ class AgentGUI:
         root.geometry("780x560")
         root.configure(bg="#0B0F19")
         root.minsize(640, 480)
+        # Minimize instead of closing to keep background protection alive
+        root.protocol("WM_DELETE_WINDOW", root.iconify)
 
         # Style definitions
         style = ttk.Style()

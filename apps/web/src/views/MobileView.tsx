@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+interface BiometricAuthPlugin {
+  isAvailable(): Promise<{ available: boolean; reason: string }>;
+  authenticate(options?: { title?: string; subtitle?: string; cancelText?: string }): Promise<{ authenticated: boolean }>;
+}
+
+const BiometricAuth = registerPlugin<BiometricAuthPlugin>('BiometricAuth');
 import {
   Shield,
   ShieldAlert,
@@ -138,33 +145,53 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     }
 
     setIsBiometricScanning(true);
-    setUnlockToast('Scanning Phone Biometrics (Fingerprint / Face)...');
+    setUnlockToast('Touch in-display fingerprint sensor...');
 
-    // Trigger Phone Biometrics via WebAuthn if available
-    try {
-      if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        if (available) {
-          const challenge = new Uint8Array(32);
-          window.crypto.getRandomValues(challenge);
-          await navigator.credentials.get({
-            publicKey: {
-              challenge,
-              timeout: 60000,
-              userVerification: 'required'
-            }
-          }).catch(() => {
-            // Dismissed or fallback
-          });
+    // 1. If running inside Android APK (Samsung Galaxy A56), trigger native Android BiometricPrompt
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await BiometricAuth.authenticate({
+          title: 'Biometric Laptop Unlock',
+          subtitle: 'Scan your fingerprint to unlock your laptop',
+          cancelText: 'Cancel'
+        });
+      } catch (bioErr: any) {
+        setIsBiometricScanning(false);
+        const msg = String(bioErr?.message || bioErr || '');
+        if (msg.toLowerCase().includes('cancel') || msg.includes('10') || msg.includes('13')) {
+          setUnlockToast('Fingerprint scan cancelled.');
+        } else {
+          setUnlockToast('Fingerprint not recognized. Please try again.');
         }
+        setTimeout(() => setUnlockToast(null), 3000);
+        return;
       }
-    } catch {
-      // Graceful fallback
+    } else {
+      // 2. Web browser fallback
+      try {
+        if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          if (available) {
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+            await navigator.credentials.get({
+              publicKey: {
+                challenge,
+                timeout: 60000,
+                userVerification: 'required'
+              }
+            }).catch(() => {});
+          }
+        }
+      } catch {
+        // Desktop browser preview fallback
+      }
     }
 
     try {
+      setUnlockToast('✨ Fingerprint Verified — Unlocking Laptop...');
       await unlockDevice(currentDev.id, savedPin);
-      setUnlockToast('✨ Fingerprint Verified — Laptop Unlocked!');
+      setUnlockToast('✨ Verified! Laptop credentials entered & unlocked.');
       setTimeout(() => setUnlockToast(null), 4000);
     } catch {
       setUnlockToast('Remote unlock command dispatched to Sentinel.');
