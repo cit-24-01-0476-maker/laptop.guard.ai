@@ -354,10 +354,13 @@ async def client_websocket_endpoint(websocket: WebSocket, user_id: str):
         hub.unregister_client(user_id, websocket)
 
 # Mount compiled web frontend at root (serves web app if visited directly on Render)
+static_web = Path(__file__).resolve().parent / "static" / "web"
 root_dir = Path(__file__).resolve().parents[2]
 dist_dir = root_dir / "apps" / "web" / "dist"
-if dist_dir.exists():
-    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")
+
+target_frontend = static_web if (static_web.exists() and (static_web / "index.html").exists()) else dist_dir
+if target_frontend.exists() and (target_frontend / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(target_frontend), html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
