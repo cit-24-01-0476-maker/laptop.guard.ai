@@ -25,6 +25,7 @@ import { CriticalAlertModal } from './components/Modals/CriticalAlertModal';
 import { PairingModal } from './components/Modals/PairingModal';
 import { AuthModal } from './components/Modals/AuthModal';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
+import { IntroVideoModal } from './components/IntroVideoModal';
 
 const checkIsAppMode = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -73,6 +74,10 @@ export const AppContent: React.FC = () => {
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [pendingTargetView, setPendingTargetView] = useState<string>('dashboard');
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('laptopguard_skip_intro');
+  });
 
   const navigateToProtectedView = (targetView: string) => {
     if (isAuthenticated) {
@@ -124,22 +129,29 @@ export const AppContent: React.FC = () => {
     // Unauthenticated: Dedicated Full-Screen Mobile Login Screen
     if (!isAuthenticated) {
       return (
-        <MobileAuthView
-          onSuccess={() => {
-            refreshAll();
-            setCurrentView('mobile');
-          }}
-        />
+        <>
+          <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
+          <MobileAuthView
+            onSuccess={() => {
+              refreshAll();
+              setCurrentView('mobile');
+            }}
+          />
+        </>
       );
     }
 
     // Authenticated Mobile App Dashboard
     if (currentView === 'mobile') {
       return (
-        <MobileView
-          onBackToLanding={handleLogout}
-          onOpenDashboard={() => setCurrentView('dashboard')}
-        />
+        <>
+          <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
+          <MobileView
+            onBackToLanding={handleLogout}
+            onOpenDashboard={() => setCurrentView('dashboard')}
+            onOpenIntro={() => setShowIntro(true)}
+          />
+        </>
       );
     }
   }
@@ -150,11 +162,13 @@ export const AppContent: React.FC = () => {
   if (currentView === 'landing') {
     return (
       <>
+        <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
         <LandingView
           onLaunchConsole={() => navigateToProtectedView('dashboard')}
           onOpenMobileView={() => navigateToProtectedView('mobile')}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onLogout={handleLogout}
+          onOpenIntro={() => setShowIntro(true)}
         />
         <AuthModal
           isOpen={isAuthModalOpen}
@@ -167,10 +181,14 @@ export const AppContent: React.FC = () => {
 
   if (currentView === 'mobile') {
     return (
-      <MobileView
-        onBackToLanding={() => setCurrentView('landing')}
-        onOpenDashboard={() => setCurrentView('dashboard')}
-      />
+      <>
+        <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
+        <MobileView
+          onBackToLanding={() => setCurrentView('landing')}
+          onOpenDashboard={() => setCurrentView('dashboard')}
+          onOpenIntro={() => setShowIntro(true)}
+        />
+      </>
     );
   }
 
@@ -239,6 +257,7 @@ export const AppContent: React.FC = () => {
       </div>
 
       {/* Global Modals */}
+      <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
       <LockConfirmModal />
       <AlarmTriggerModal />
       <LostModeModal />

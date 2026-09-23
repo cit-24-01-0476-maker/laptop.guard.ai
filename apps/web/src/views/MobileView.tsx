@@ -27,7 +27,8 @@ import {
   Clock,
   ChevronRight,
   Smartphone,
-  Navigation
+  Navigation,
+  Play
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
@@ -36,9 +37,10 @@ import { BrandLogo } from '../components/BrandLogo';
 interface MobileViewProps {
   onBackToLanding: () => void;
   onOpenDashboard: () => void;
+  onOpenIntro?: () => void;
 }
 
-export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenDashboard }) => {
+export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenDashboard, onOpenIntro }) => {
   const {
     devices,
     selectedDevice,
@@ -214,6 +216,15 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
           {/* Quick controls */}
           <div className="flex items-center gap-1.5">
+            {onOpenIntro && (
+              <button
+                onClick={onOpenIntro}
+                className="ios-bubble-btn p-2 rounded-xl bg-cyan-50/80 hover:bg-cyan-100 text-cyan-700 border border-cyan-200/80 shadow-xs cursor-pointer"
+                title="Play Cyber Intro"
+              >
+                <Play className="w-3.5 h-3.5 fill-cyan-600 text-cyan-600" />
+              </button>
+            )}
             <button
               onClick={() => refreshAll()}
               className="ios-bubble-btn p-2 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200/80 shadow-xs cursor-pointer"

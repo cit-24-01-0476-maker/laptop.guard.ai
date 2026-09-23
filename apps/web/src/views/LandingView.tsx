@@ -22,7 +22,8 @@ import {
   Activity,
   Sparkles,
   Layers,
-  Cpu
+  Cpu,
+  Play
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { getDownloadUrl } from '../services/api';
@@ -33,13 +34,15 @@ interface LandingViewProps {
   onOpenMobileView: () => void;
   onOpenAuth?: () => void;
   onLogout?: () => void;
+  onOpenIntro?: () => void;
 }
 
 export const LandingView: React.FC<LandingViewProps> = ({
   onLaunchConsole,
   onOpenMobileView,
   onOpenAuth,
-  onLogout
+  onLogout,
+  onOpenIntro
 }) => {
   const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
 
@@ -225,6 +228,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <Download className="w-4 h-4 text-emerald-600" />
                 <span>Android App (.apk)</span>
               </button>
+
+              {onOpenIntro && (
+                <button
+                  onClick={onOpenIntro}
+                  className="ios-bubble-btn flex items-center gap-1.5 py-3 sm:py-3.5 px-4 rounded-2xl bg-cyan-50/80 hover:bg-cyan-100 text-cyan-800 text-xs sm:text-sm font-bold border border-cyan-200 shadow-xs cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 text-cyan-600 fill-cyan-600" />
+                  <span>Watch Intro</span>
+                </button>
+              )}
             </div>
 
             {/* Hardware Trust Badges */}

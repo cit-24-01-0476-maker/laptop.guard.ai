@@ -4,6 +4,7 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
+    "url": "https://laptopguard-api.onrender.com/?mode=app",
     "androidScheme": "https",
     "cleartext": true
   }
