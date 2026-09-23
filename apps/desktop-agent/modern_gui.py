@@ -31,6 +31,7 @@ class ModernAgentGUI:
         on_lock_device: Optional[Callable] = None,
         on_authenticated: Optional[Callable] = None,
         on_check_update: Optional[Callable] = None,
+        on_create_shortcut: Optional[Callable] = None,
         device_name: str = "Dell G15 5530"
     ):
         self.on_arm = on_arm
@@ -41,6 +42,7 @@ class ModernAgentGUI:
         self.on_lock_device = on_lock_device
         self.on_authenticated = on_authenticated
         self.on_check_update = on_check_update
+        self.on_create_shortcut = on_create_shortcut
         self.device_name = device_name
         
         self.root: Optional[ctk.CTk] = None
@@ -504,10 +506,13 @@ class ModernAgentGUI:
             desc_lbl = ctk.CTkLabel(row, text=desc, font=ctk.CTkFont(size=11), text_color="#64748B")
             desc_lbl.pack(anchor="w", padx=28)
 
+        btn_row = ctk.CTkFrame(box, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(15, 10))
+
         if self.on_check_update:
             btn_upd = ctk.CTkButton(
-                box,
-                text="🔄 Check for Software Updates Now",
+                btn_row,
+                text="🔄 Check Updates Now",
                 font=ctk.CTkFont(size=12, weight="bold"),
                 fg_color="#0284C7",
                 hover_color="#0369A1",
@@ -515,7 +520,20 @@ class ModernAgentGUI:
                 corner_radius=10,
                 command=self.on_check_update
             )
-            btn_upd.pack(anchor="w", padx=20, pady=(15, 10))
+            btn_upd.pack(side="left", padx=(0, 10))
+
+        if self.on_create_shortcut:
+            btn_sc = ctk.CTkButton(
+                btn_row,
+                text="📌 Add / Recreate Desktop Icon",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                fg_color="#475569",
+                hover_color="#334155",
+                height=36,
+                corner_radius=10,
+                command=self.on_create_shortcut
+            )
+            btn_sc.pack(side="left")
 
     def _build_camera_tab(self, parent):
         box = ctk.CTkFrame(parent, corner_radius=16, fg_color=("#F8FAFC", "#111827"))

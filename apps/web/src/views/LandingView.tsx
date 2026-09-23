@@ -37,6 +37,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
 }) => {
   const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
 
+  const handleDownloadSetup = () => {
+    window.location.href = getDownloadUrl('windows-setup');
+  };
+
   const handleDownloadExe = () => {
     window.location.href = getDownloadUrl('windows-exe');
   };
@@ -164,11 +168,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </button>
 
               <button
-                onClick={handleDownloadExe}
+                onClick={handleDownloadSetup}
                 className="jelly-button flex items-center gap-2 py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 text-sm font-bold border border-slate-200/90 shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4 text-blue-600" />
-                <span>Windows App (.exe)</span>
+                <span>Windows Setup (Install)</span>
               </button>
 
               <button
@@ -492,17 +496,24 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
-                onClick={handleDownloadExe}
+                onClick={handleDownloadSetup}
                 className="jelly-button flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 active:scale-[0.98] cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Download .exe (v1.4.2)</span>
+                <span>Install Setup.exe</span>
+              </button>
+              <button
+                onClick={handleDownloadExe}
+                className="jelly-button py-3.5 px-3 rounded-2xl bg-white/80 hover:bg-white border border-slate-200/90 text-slate-700 text-xs font-bold shadow-sm cursor-pointer"
+                title="Download Standalone Portable .exe"
+              >
+                <span>.EXE</span>
               </button>
               <button
                 onClick={handleDownloadWindows}
-                className="jelly-button py-3.5 px-4 rounded-2xl bg-white/80 hover:bg-white border border-slate-200/90 text-slate-700 text-xs font-bold shadow-sm cursor-pointer"
+                className="jelly-button py-3.5 px-3 rounded-2xl bg-white/80 hover:bg-white border border-slate-200/90 text-slate-700 text-xs font-bold shadow-sm cursor-pointer"
                 title="Download Portable .zip Package"
               >
                 <span>.ZIP</span>

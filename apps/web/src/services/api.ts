@@ -29,6 +29,9 @@ export const getApiBaseUrl = (): string => {
 
 export const getDownloadUrl = (endpoint: string): string => {
   const clean = endpoint.replace(/^\//, '');
+  if (clean === 'windows-setup') {
+    return 'https://laptopguard-api.onrender.com/downloads/windows-setup';
+  }
   if (clean === 'windows-exe') {
     return 'https://laptopguard-api.onrender.com/downloads/windows-exe';
   }

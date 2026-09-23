@@ -44,7 +44,35 @@ from actions.snapshot_taker import take_security_snapshot
 from offline_queue import OfflineEventQueue
 from modern_gui import ModernAgentGUI
 from auto_updater import DesktopAutoUpdater, APP_VERSION
-from packages.security.signer import verify_command_envelope
+from installer import ensure_desktop_icon, install_to_pc
+
+try:
+    from packages.security.signer import verify_command_envelope
+except ImportError:
+    try:
+        from security.signer import verify_command_envelope
+    except ImportError:
+        import hmac, hashlib
+        SECRET_SIGNING_KEY = b"laptopguard_device_secret_2026_super_secure_key"
+        def verify_command_envelope(envelope):
+            now = int(time.time())
+            expires_at = envelope.get("expires_at")
+            if expires_at and expires_at < (now - 300):
+                return False, "Command has expired"
+            command_id = envelope.get("command_id", "")
+            command_type = envelope.get("command_type", "")
+            device_id = envelope.get("device_id", "")
+            user_id = envelope.get("user_id", "")
+            nonce = envelope.get("nonce", "")
+            expires_at = envelope.get("expires_at", 0)
+            payload = envelope.get("payload", {})
+            expected_sig = envelope.get("signature", "")
+            data_to_sign = f"{command_id}:{command_type}:{device_id}:{user_id}:{nonce}:{expires_at}:{json.dumps(payload, sort_keys=True)}"
+            calculated_sig = hmac.new(SECRET_SIGNING_KEY, data_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(calculated_sig, expected_sig):
+                return False, "Cryptographic signature mismatch"
+            return True, "Valid"
+
 import websockets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -70,6 +98,12 @@ class LaptopGuardDesktopApp:
         
         self.offline_queue = OfflineEventQueue(str(LOCAL_QUEUE_FILE))
         
+        # Auto-create Desktop icon if not present
+        try:
+            ensure_desktop_icon()
+        except Exception:
+            pass
+
         # Auto-Updater
         self.updater = DesktopAutoUpdater(
             backend_url=BACKEND_HTTP_URL,
@@ -95,8 +129,16 @@ class LaptopGuardDesktopApp:
             on_lock_device=self.lock_workstation_now,
             on_authenticated=self._on_user_authenticated,
             on_check_update=lambda: self.updater.check_for_updates(manual=True),
+            on_create_shortcut=self._create_desktop_shortcut,
             device_name=self.device_name
         )
+
+    def _create_desktop_shortcut(self):
+        try:
+            ensure_desktop_icon()
+            self.gui.log_event("📌 Desktop shortcut created successfully on Desktop!")
+        except Exception as e:
+            self.gui.log_event(f"Error creating shortcut: {e}")
 
     def _on_updater_status(self, msg: str):
         self.gui.log_event(msg)

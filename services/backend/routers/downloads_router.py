@@ -139,10 +139,33 @@ async def download_android_apk():
 
     return RedirectResponse(url="https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk", status_code=302)
 
+@router.get("/windows-setup")
+async def download_windows_setup():
+    """
+    Delivers the LaptopGuard-Setup.exe installer.
+    Installs LaptopGuard AI onto PC and creates Desktop shortcut with official shield icon.
+    """
+    root = Path(__file__).resolve().parents[3]
+    candidate_paths = [
+        root / "services" / "backend" / "static" / "LaptopGuard-Setup.exe",
+        Path(__file__).resolve().parents[1] / "static" / "LaptopGuard-Setup.exe",
+        root / "dist" / "LaptopGuard-Setup.exe",
+        root / "apps" / "desktop-agent" / "dist" / "LaptopGuard-Setup.exe"
+    ]
+    for p in candidate_paths:
+        if p.exists():
+            return FileResponse(
+                path=str(p),
+                filename=f"LaptopGuard-Setup-v{CURRENT_VERSION}.exe",
+                media_type="application/octet-stream"
+            )
+    return await download_windows_exe()
+
 
 # Root alias router for /downloads/*
 alias_router = APIRouter(prefix="/downloads", tags=["Downloads & Updates"])
 alias_router.add_api_route("/manifest", get_version_manifest, methods=["GET"])
 alias_router.add_api_route("/windows-agent", download_windows_agent, methods=["GET"])
 alias_router.add_api_route("/windows-exe", download_windows_exe, methods=["GET"])
+alias_router.add_api_route("/windows-setup", download_windows_setup, methods=["GET"])
 alias_router.add_api_route("/android-apk", download_android_apk, methods=["GET"])
