@@ -1,12 +1,6 @@
 {
   "buildCommand": "cd apps/web && npm install && npm run build",
   "outputDirectory": "apps/web/dist",
-  "rewrites": [
-    {
-      "source": "/((?!.*\\..*).*)",
-      "destination": "/index.html"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*\\.apk)",
@@ -20,6 +14,32 @@
           "value": "attachment; filename=\"LaptopGuard-AI.apk\""
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/downloads/android-apk",
+      "destination": "/LaptopGuard-AI.apk"
+    },
+    {
+      "source": "/downloads/windows-setup",
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+    },
+    {
+      "source": "/downloads/windows-exe",
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-exe"
+    },
+    {
+      "source": "/downloads/windows-agent",
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-agent"
+    },
+    {
+      "source": "/api/v1/downloads/:match*",
+      "destination": "https://laptopguard-api.onrender.com/api/v1/downloads/:match*"
+    },
+    {
+      "source": "/((?!.*\\..*).*)",
+      "destination": "/index.html"
     }
   ]
 }
