@@ -26,6 +26,7 @@ import { PairingModal } from './components/Modals/PairingModal';
 import { AuthModal } from './components/Modals/AuthModal';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
 import { IntroVideoModal } from './components/IntroVideoModal';
+import { MasterAccessLock } from './components/MasterAccessLock';
 
 const checkIsAppMode = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -121,6 +122,25 @@ export const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, isAppMode, currentView]);
 
+  // Master Access Lock (Owner PIN: 6728)
+  const [isMasterUnlocked, setIsMasterUnlocked] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('laptopguard_master_unlocked') === 'true';
+  });
+
+  const handleMasterRelock = () => {
+    sessionStorage.removeItem('laptopguard_master_unlocked');
+    setIsMasterUnlocked(false);
+  };
+
+  // ==========================================
+  // MASTER ACCESS LOCK GATE (PIN: 6728)
+  // Gating all Web & Mobile App interfaces
+  // ==========================================
+  if (!isMasterUnlocked) {
+    return <MasterAccessLock onUnlock={() => setIsMasterUnlocked(true)} />;
+  }
+
   // ==========================================
   // 1. MOBILE APP MODE (Native APK or Mobile)
   // Bypasses the website completely!
@@ -150,6 +170,7 @@ export const AppContent: React.FC = () => {
             onBackToLanding={handleLogout}
             onOpenDashboard={() => setCurrentView('dashboard')}
             onOpenIntro={() => setShowIntro(true)}
+            onLockMasterAccess={handleMasterRelock}
           />
         </>
       );
@@ -169,6 +190,7 @@ export const AppContent: React.FC = () => {
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onLogout={handleLogout}
           onOpenIntro={() => setShowIntro(true)}
+          onLockMasterAccess={handleMasterRelock}
         />
         <AuthModal
           isOpen={isAuthModalOpen}
@@ -187,6 +209,7 @@ export const AppContent: React.FC = () => {
           onBackToLanding={() => setCurrentView('landing')}
           onOpenDashboard={() => setCurrentView('dashboard')}
           onOpenIntro={() => setShowIntro(true)}
+          onLockMasterAccess={handleMasterRelock}
         />
       </>
     );
@@ -244,6 +267,7 @@ export const AppContent: React.FC = () => {
           onNavigateMobile={() => setCurrentView('mobile')}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onLogout={handleLogout}
+          onLockMasterAccess={handleMasterRelock}
         />
       </div>
 

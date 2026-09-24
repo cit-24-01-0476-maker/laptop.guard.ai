@@ -325,3 +325,14 @@ html.dark .glass-panel {
   background: rgba(59, 130, 246, 0.5);
   background-clip: content-box;
 }
+
+/* Shake Animation for Invalid PIN */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.animate-shake {
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}

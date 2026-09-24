@@ -116,3 +116,21 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=schemas.UserResponse)
 def get_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+from pydantic import BaseModel
+
+class MasterPinVerifyRequest(BaseModel):
+    pin: str
+
+MASTER_SECURITY_PIN = "6728"
+
+@router.post("/verify-master-pin")
+def verify_master_pin(payload: MasterPinVerifyRequest):
+    if (payload.pin or "").strip() == MASTER_SECURITY_PIN:
+        return {
+            "status": "granted",
+            "message": "Master access verified successfully",
+            "unlocked": True
+        }
+    raise HTTPException(status_code=403, detail="ACCESS DENIED: Invalid Master Security PIN")
+

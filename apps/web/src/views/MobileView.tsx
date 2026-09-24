@@ -38,9 +38,10 @@ interface MobileViewProps {
   onBackToLanding: () => void;
   onOpenDashboard: () => void;
   onOpenIntro?: () => void;
+  onLockMasterAccess?: () => void;
 }
 
-export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenDashboard, onOpenIntro }) => {
+export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenDashboard, onOpenIntro, onLockMasterAccess }) => {
   const {
     devices,
     selectedDevice,
@@ -240,6 +241,15 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
+            {onLockMasterAccess && (
+              <button
+                onClick={onLockMasterAccess}
+                className="ios-bubble-btn p-2 rounded-xl bg-rose-50/80 hover:bg-rose-100 text-rose-600 border border-rose-200/80 shadow-xs cursor-pointer"
+                title="Lock Master Access (PIN Required)"
+              >
+                <Lock className="w-3.5 h-3.5" />
+              </button>
+            )}
             {!Capacitor.isNativePlatform() && (
               <button
                 onClick={onOpenDashboard}

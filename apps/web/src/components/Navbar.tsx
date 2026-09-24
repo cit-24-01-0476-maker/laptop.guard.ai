@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Bell, Moon, Sun, Search, VolumeX, Home, Smartphone, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
+import { Shield, Bell, Moon, Sun, Search, VolumeX, Home, Smartphone, LogOut, ChevronDown, User as UserIcon, Lock } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api } from '../services/api';
 import { BrandLogo } from './BrandLogo';
@@ -10,9 +10,10 @@ interface NavbarProps {
   onNavigateMobile?: () => void;
   onOpenAuth?: () => void;
   onLogout?: () => void;
+  onLockMasterAccess?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigateHome, onNavigateMobile, onOpenAuth, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigateHome, onNavigateMobile, onOpenAuth, onLogout, onLockMasterAccess }) => {
   const {
     isWsConnected,
     theme,
@@ -112,6 +113,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigateHome, onN
             <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
             <span className="hidden sm:inline">Phone Remote</span>
             <span className="sm:hidden">App</span>
+          </button>
+        )}
+
+        {/* Lock Master Access */}
+        {onLockMasterAccess && (
+          <button
+            onClick={onLockMasterAccess}
+            className="w-9 h-9 rounded-full bg-rose-50/80 hover:bg-rose-100 border border-rose-200/80 flex items-center justify-center text-rose-600 shadow-sm transition-all cursor-pointer"
+            title="Lock Master Access (PIN 6728 Required)"
+          >
+            <Lock className="w-4 h-4" />
           </button>
         )}
 

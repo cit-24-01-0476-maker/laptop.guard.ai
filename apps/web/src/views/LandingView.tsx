@@ -35,6 +35,7 @@ interface LandingViewProps {
   onOpenAuth?: () => void;
   onLogout?: () => void;
   onOpenIntro?: () => void;
+  onLockMasterAccess?: () => void;
 }
 
 export const LandingView: React.FC<LandingViewProps> = ({
@@ -42,7 +43,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
   onOpenMobileView,
   onOpenAuth,
   onLogout,
-  onOpenIntro
+  onOpenIntro,
+  onLockMasterAccess
 }) => {
   const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
 
@@ -154,6 +156,17 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   <span>Sign In</span>
                 </button>
               )
+            )}
+
+            {onLockMasterAccess && (
+              <button
+                onClick={onLockMasterAccess}
+                className="ios-bubble-btn p-2 sm:py-2.5 sm:px-3 rounded-2xl bg-rose-50/80 hover:bg-rose-100 text-rose-600 border border-rose-200/80 shadow-xs cursor-pointer flex items-center gap-1.5"
+                title="Lock Master Access (PIN Required)"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden md:inline text-xs font-bold">Lock Access</span>
+              </button>
             )}
 
             <button
