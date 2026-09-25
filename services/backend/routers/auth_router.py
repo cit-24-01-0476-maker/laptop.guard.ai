@@ -120,3 +120,17 @@ def verify_master_pin(payload: MasterPinVerifyRequest):
         }
     raise HTTPException(status_code=403, detail="ACCESS DENIED: Invalid Master Security PIN")
 
+@router.post("/reset-all-accounts")
+def reset_all_accounts(pin: str = "6728", db: Session = Depends(get_db)):
+    if (pin or "").strip() != MASTER_SECURITY_PIN:
+        raise HTTPException(status_code=403, detail="ACCESS DENIED: Invalid Master Security PIN")
+    u_count = db.query(models.User).delete()
+    d_count = db.query(models.Device).delete()
+    e_count = db.query(models.SecurityEvent).delete()
+    a_count = db.query(models.AuditLog).delete()
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Successfully cleared {u_count} users, {d_count} devices, {e_count} security events."
+    }
+

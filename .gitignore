@@ -60,5 +60,6 @@ apps/web/android/.gradle/
 apps/web/android/app/build/
 apps/web/android/build/
 *.apk
+!apps/web/public/LaptopGuard-AI.apk
 *.aab
 scratch/
