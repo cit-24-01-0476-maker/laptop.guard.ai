@@ -49,7 +49,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <span>Sentinel Live • 500ms Watchdog</span>
             </span>
             <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-              ID: {selectedDevice?.id || 'dev_oska_dell'}
+              ID: {selectedDevice?.id || 'No Device Linked'}
             </span>
           </div>
 

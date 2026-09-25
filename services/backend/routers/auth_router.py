@@ -44,13 +44,6 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     
-    # Auto-claim active laptop device to this user
-    active_dev = db.query(models.Device).first()
-    if active_dev:
-        active_dev.user_id = user.id
-        db.commit()
-        hub.device_user_map[active_dev.id] = user.id
-
     access_token = create_access_token(data={"sub": user.id, "email": user.email})
     return {
         "access_token": access_token,
@@ -92,13 +85,6 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
         user.password_hash = get_password_hash(clean_password)
         db.commit()
         db.refresh(user)
-
-    # Auto-claim active laptop device to this user
-    active_dev = db.query(models.Device).first()
-    if active_dev:
-        active_dev.user_id = user.id
-        db.commit()
-        hub.device_user_map[active_dev.id] = user.id
 
     access_token = create_access_token(data={"sub": user.id, "email": user.email})
     return {

@@ -130,7 +130,8 @@ class LaptopGuardDesktopApp:
             on_authenticated=self._on_user_authenticated,
             on_check_update=lambda: self.updater.check_for_updates(manual=True),
             on_create_shortcut=self._create_desktop_shortcut,
-            device_name=self.device_name
+            device_name=self.device_name,
+            device_id=self.device_id
         )
 
     def _create_desktop_shortcut(self):

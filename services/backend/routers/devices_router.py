@@ -14,13 +14,6 @@ router = APIRouter(prefix="/devices", tags=["Devices"])
 @router.get("", response_model=List[schemas.DeviceResponse])
 def get_devices(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     devices = db.query(models.Device).filter(models.Device.user_id == current_user.id).all()
-    if not devices:
-        active_dev = db.query(models.Device).first()
-        if active_dev:
-            active_dev.user_id = current_user.id
-            db.commit()
-            hub.device_user_map[active_dev.id] = current_user.id
-            devices = [active_dev]
     results = []
     for d in devices:
         d_dict = schemas.DeviceResponse.from_orm(d)
@@ -210,10 +203,12 @@ def claim_or_register_device(data: dict, db: Session = Depends(get_db), current_
     Called by the Windows Desktop Agent when a user logs in.
     Binds the local laptop hardware to the logged-in user's account.
     """
-    device_id = data.get("device_id", "dev_oska_xps15")
-    device_name = data.get("device_name", "Dell G15 5530")
-    manufacturer = data.get("manufacturer", "Dell")
-    model = data.get("model", "G15 5530")
+    device_id = data.get("device_id")
+    if not device_id:
+        raise HTTPException(status_code=400, detail="device_id is required")
+    device_name = data.get("device_name", "Windows Laptop")
+    manufacturer = data.get("manufacturer", "Generic")
+    model = data.get("model", "PC")
     os_name = data.get("os", "Windows")
     os_version = data.get("os_version", "11 Home")
     agent_version = data.get("agent_version", "1.4.2")

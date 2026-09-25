@@ -15,10 +15,14 @@ CONFIG_DIR = Path.home() / ".laptopguard"
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 SESSION_FILE = CONFIG_DIR / "session.json"
 try:
-    from config import BACKEND_HTTP_URL
+    from config import BACKEND_HTTP_URL, DEVICE_ID, DEVICE_NAME, MANUFACTURER, MODEL
     BACKEND_URL = BACKEND_HTTP_URL
 except Exception:
     BACKEND_URL = os.getenv("LAPTOPGUARD_API_URL", "https://laptopguard-api.onrender.com/api/v1")
+    DEVICE_ID = "dev_sentinel_pc"
+    DEVICE_NAME = "Windows Sentinel"
+    MANUFACTURER = "PC"
+    MODEL = "Laptop"
 
 class ModernAgentGUI:
     def __init__(
@@ -32,7 +36,8 @@ class ModernAgentGUI:
         on_authenticated: Optional[Callable] = None,
         on_check_update: Optional[Callable] = None,
         on_create_shortcut: Optional[Callable] = None,
-        device_name: str = "Dell G15 5530"
+        device_name: str = DEVICE_NAME,
+        device_id: str = DEVICE_ID
     ):
         self.on_arm = on_arm
         self.on_disarm = on_disarm
@@ -44,6 +49,9 @@ class ModernAgentGUI:
         self.on_check_update = on_check_update
         self.on_create_shortcut = on_create_shortcut
         self.device_name = device_name
+        self.device_id = device_id
+        self.manufacturer = MANUFACTURER
+        self.model = MODEL
         
         self.root: Optional[ctk.CTk] = None
         self.is_armed = True
@@ -269,8 +277,10 @@ class ModernAgentGUI:
                         try:
                             headers = {"Authorization": f"Bearer {token}"}
                             claim_payload = {
-                                "device_id": "dev_oska_xps15",
-                                "device_name": getattr(self, "device_name", "Dell G15 Sentinel"),
+                                "device_id": getattr(self, "device_id", DEVICE_ID),
+                                "device_name": getattr(self, "device_name", DEVICE_NAME),
+                                "manufacturer": getattr(self, "manufacturer", MANUFACTURER),
+                                "model": getattr(self, "model", MODEL),
                                 "battery": getattr(self, "battery_pct", 100),
                                 "is_charging": getattr(self, "is_charging", True)
                             }

@@ -127,22 +127,20 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
     db: Session = next(get_db())
     device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if not device:
-        # Auto-provision new hardware agent for zero-config pairing
-        first_user = db.query(models.User).first()
-        owner_id = first_user.id if first_user else "usr_owner_demo"
+        # Create unbound device record until owner logs in via the desktop app
         device = models.Device(
             id=device_id,
-            user_id=owner_id,
-            device_name="Dell G15 Sentinel",
+            user_id="unbound",
+            device_name="Windows Sentinel Laptop",
             device_type="laptop",
-            manufacturer="Dell Inc.",
-            model="G15 5530",
+            manufacturer="Unknown",
+            model="Laptop",
             os="Windows",
-            os_version="11 Home",
-            agent_version="1.4.2",
+            os_version="11",
+            agent_version="1.5.2",
             device_public_key="ed25519_pk_auto",
-            is_paired=True,
-            status="Protected",
+            is_paired=False,
+            status="Unpaired",
             security_mode="Balanced",
             battery=100,
             is_charging=True,
@@ -151,9 +149,9 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
         db.add(device)
         db.commit()
         db.refresh(device)
-        logger.info(f"Auto-provisioned device {device_id} to user {owner_id}")
+        logger.info(f"Registered new hardware device {device_id} (awaiting owner sign-in)")
 
-    await hub.register_device(device_id, device.user_id, websocket)
+    await hub.register_device(device_id, device.user_id or "unbound", websocket)
     try:
         while True:
             data_text = await websocket.receive_text()

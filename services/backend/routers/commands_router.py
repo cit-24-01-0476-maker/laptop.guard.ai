@@ -19,31 +19,13 @@ async def dispatch_command(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Verify device - try owned first, then fall back to any device with this ID
+    # 1. Verify device ownership strictly
     device = db.query(models.Device).filter(models.Device.id == device_id, models.Device.user_id == current_user.id).first()
     if not device:
-        # Try to find device by ID regardless of user (cross-user command for paired devices)
-        device = db.query(models.Device).filter(models.Device.id == device_id).first()
-        if device:
-            # Re-assign to current user so future commands work
-            device.user_id = current_user.id
-            db.commit()
-    if not device:
-        # Auto-provision the device so commands never fail
-        device = models.Device(
-            id=device_id,
-            user_id=current_user.id,
-            device_name="Dell G15 Sentinel",
-            device_type="LAPTOP",
-            status="Protected",
-            battery=100,
-            is_charging=True,
-            current_ssid="Campus_Secure_5G",
-            ip_address="127.0.0.1"
-        )
-        db.add(device)
-        db.commit()
-        db.refresh(device)
+        exists_other = db.query(models.Device).filter(models.Device.id == device_id).first()
+        if exists_other:
+            raise HTTPException(status_code=403, detail="Unauthorized: You do not own this device.")
+        raise HTTPException(status_code=404, detail="Device not found.")
 
     command_type = req.command_type.upper()
     payload = req.payload or {}
