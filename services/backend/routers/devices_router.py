@@ -278,3 +278,46 @@ def claim_or_register_device(data: dict, db: Session = Depends(get_db), current_
     db.commit()
     db.refresh(new_device)
     return {"status": "registered", "device": schemas.DeviceResponse.from_orm(new_device)}
+
+@router.post("/{device_id}/bond-with-qr")
+def bond_device_with_qr(device_id: str, data: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Called by the mobile app after scanning the laptop's screen QR code.
+    Strictly bonds the phone to this specific laptop hardware.
+    """
+    device = db.query(models.Device).filter(models.Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found. Make sure Desktop software is running.")
+
+    # Verify device belongs to this user or link it
+    if device.user_id != current_user.id:
+        # Check if email in QR payload matches
+        qr_email = (data.get("email") or "").strip().lower()
+        if qr_email and qr_email == current_user.email.lower():
+            device.user_id = current_user.id
+        else:
+            raise HTTPException(status_code=403, detail=f"This laptop belongs to another account. Please sign in as the owner.")
+
+    device.is_paired = True
+    device.status = "Protected" if device.status != "Lost" else "Lost"
+    device.last_seen = datetime.utcnow()
+    db.commit()
+    db.refresh(device)
+
+    # Broadcast real-time event so desktop app displays 'Phone Paired'
+    try:
+        import asyncio
+        asyncio.create_task(hub.broadcast_to_user(current_user.id, {
+            "type": "DEVICE_BONDED_QR",
+            "device_id": device.id,
+            "device_name": device.device_name,
+            "timestamp": datetime.utcnow().isoformat()
+        }))
+    except Exception:
+        pass
+
+    return {
+        "status": "success",
+        "message": f"Successfully bonded phone with {device.device_name}",
+        "device": schemas.DeviceResponse.from_orm(device)
+    }

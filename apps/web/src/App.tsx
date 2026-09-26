@@ -134,14 +134,6 @@ export const AppContent: React.FC = () => {
   };
 
   // ==========================================
-  // MASTER ACCESS LOCK GATE (PIN: 6728)
-  // Gating all Web & Mobile App interfaces
-  // ==========================================
-  if (!isMasterUnlocked) {
-    return <MasterAccessLock onUnlock={() => setIsMasterUnlocked(true)} />;
-  }
-
-  // ==========================================
   // 1. MOBILE APP MODE (Native APK or Mobile)
   // Bypasses the website completely!
   // ==========================================
@@ -159,6 +151,11 @@ export const AppContent: React.FC = () => {
           />
         </>
       );
+    }
+
+    // Authenticated: Security Passcode Gate
+    if (!isMasterUnlocked) {
+      return <MasterAccessLock onUnlock={() => setIsMasterUnlocked(true)} />;
     }
 
     // Authenticated Mobile App Dashboard
@@ -202,6 +199,24 @@ export const AppContent: React.FC = () => {
   }
 
   if (currentView === 'mobile') {
+    if (!isAuthenticated) {
+      return (
+        <>
+          <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
+          <MobileAuthView
+            onSuccess={() => {
+              refreshAll();
+              setCurrentView('mobile');
+            }}
+          />
+        </>
+      );
+    }
+
+    if (!isMasterUnlocked) {
+      return <MasterAccessLock onUnlock={() => setIsMasterUnlocked(true)} />;
+    }
+
     return (
       <>
         <IntroVideoModal isOpen={showIntro} onClose={() => setShowIntro(false)} />
@@ -213,6 +228,11 @@ export const AppContent: React.FC = () => {
         />
       </>
     );
+  }
+
+  // Desktop Dashboard Views (Protected by Passcode)
+  if (!isMasterUnlocked) {
+    return <MasterAccessLock onUnlock={() => setIsMasterUnlocked(true)} />;
   }
 
   // Desktop Dashboard Views

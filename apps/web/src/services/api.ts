@@ -97,10 +97,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password })
     }),
-  register: (email: string, password: string, full_name: string) =>
+  register: (email: string, password: string, full_name: string, secret_pin?: string) =>
     fetchJson<{ access_token: string; token_type: string; user: any }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, full_name })
+      body: JSON.stringify({ email, password, full_name, secret_pin: secret_pin || '6728' })
     }),
   getMe: () => fetchJson<any>('/auth/me'),
   // Devices
@@ -109,6 +109,11 @@ export const api = {
   refreshLocation: (id: string, payload?: any) => fetchJson<any>(`/devices/${id}/refresh-location`, { method: 'POST', body: JSON.stringify(payload || {}) }),
   generatePairingToken: () => fetchJson<{ pairing_token: string; expires_at: string; qr_payload: any }>('/devices/generate-pairing-token', { method: 'POST' }),
   confirmPairing: (data: any) => fetchJson<{ status: string; device_id: string }>('/devices/confirm-pairing', { method: 'POST', body: JSON.stringify(data) }),
+  bondDeviceWithQr: (deviceId: string, payload: any) =>
+    fetchJson<{ status: string; message: string; device: Device }>(`/devices/${deviceId}/bond-with-qr`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
 
   // Remote Commands
   dispatchCommand: (deviceId: string, commandType: string, payload: any = {}) =>

@@ -9,6 +9,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    secret_pin: Optional[str] = "6728"
 
 class UserLogin(BaseModel):
     email: str

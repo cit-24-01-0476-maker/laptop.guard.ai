@@ -6,7 +6,7 @@ import { realtimeHub } from '../services/websocket';
 interface SecurityContextType {
   devices: Device[];
   selectedDevice: Device | null;
-  setSelectedDevice: (d: Device | null) => void;
+  setSelectedDevice: (d: Device | null | ((prev: Device | null) => Device | null)) => void;
   events: SecurityEvent[];
   notifications: NotificationItem[];
   isWsConnected: boolean;
@@ -64,7 +64,23 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const isAuthenticated = Boolean(user && localStorage.getItem('laptopguard_token'));
 
   const [devices, setDevices] = useState<Device[]>([]);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [selectedDevice, setSelectedDeviceState] = useState<Device | null>(null);
+  const setSelectedDevice = (d: Device | null | ((prev: Device | null) => Device | null)) => {
+    if (typeof d === 'function') {
+      setSelectedDeviceState((prev: Device | null) => {
+        const next = d(prev);
+        if (next?.id) {
+          localStorage.setItem('laptopguard_bonded_device_id', next.id);
+        }
+        return next;
+      });
+    } else {
+      setSelectedDeviceState(d);
+      if (d?.id) {
+        localStorage.setItem('laptopguard_bonded_device_id', d.id);
+      }
+    }
+  };
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isWsConnected, setIsWsConnected] = useState(false);
@@ -125,9 +141,18 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     try {
+      const bondedId = localStorage.getItem('laptopguard_bonded_device_id');
       const devList = await api.getDevices();
       setDevices(devList);
-      if (!selectedDevice && devList.length > 0) {
+
+      if (bondedId) {
+        const bonded = devList.find(d => d.id === bondedId);
+        if (bonded) {
+          setSelectedDevice(bonded);
+        } else if (devList.length > 0) {
+          setSelectedDevice(devList[0]);
+        }
+      } else if (!selectedDevice && devList.length > 0) {
         setSelectedDevice(devList[0]);
       } else if (selectedDevice) {
         const updated = devList.find(d => d.id === selectedDevice.id);

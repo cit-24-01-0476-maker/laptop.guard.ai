@@ -21,12 +21,16 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     if not clean_email or not clean_password:
         raise HTTPException(status_code=400, detail="Email and password cannot be empty")
 
+    clean_secret_pin = (getattr(user_in, 'secret_pin', None) or "6728").strip()
+
     existing = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if existing:
         # Seamlessly update password and sign in rather than rejecting with 'Email already registered'
         existing.password_hash = get_password_hash(clean_password)
         if full_name:
             existing.full_name = full_name
+        if clean_secret_pin:
+            existing.two_factor_secret = clean_secret_pin
         db.commit()
         db.refresh(existing)
         user = existing
@@ -38,7 +42,8 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
             password_hash=get_password_hash(clean_password),
             full_name=full_name,
             role="owner",
-            two_factor_enabled=False
+            two_factor_enabled=True,
+            two_factor_secret=clean_secret_pin
         )
         db.add(user)
         db.commit()
@@ -53,7 +58,8 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
-            "two_factor_enabled": user.two_factor_enabled
+            "two_factor_enabled": user.two_factor_enabled,
+            "secret_pin": user.two_factor_secret or "6728"
         }
     }
 
@@ -95,7 +101,8 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
-            "two_factor_enabled": user.two_factor_enabled
+            "two_factor_enabled": user.two_factor_enabled,
+            "secret_pin": user.two_factor_secret or "6728"
         }
     }
 

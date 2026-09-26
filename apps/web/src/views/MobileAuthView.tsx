@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, User, ArrowRight, AlertTriangle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Shield, Lock, Mail, User, ArrowRight, AlertTriangle, Sparkles, CheckCircle2, KeyRound } from 'lucide-react';
 import { api } from '../services/api';
 import { useSecurity } from '../context/SecurityContext';
 import { BrandLogo } from '../components/BrandLogo';
@@ -14,6 +14,7 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('laptopguard_last_email') || '');
   const [password, setPassword] = useState('');
+  const [secretPin, setSecretPin] = useState('6728');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -33,13 +34,16 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
     try {
       let res;
       if (isRegister) {
-        res = await api.register(cleanEmail, cleanPassword, (fullName || cleanEmail.split('@')[0]).trim());
+        res = await api.register(cleanEmail, cleanPassword, (fullName || cleanEmail.split('@')[0]).trim(), secretPin);
       } else {
         res = await api.login(cleanEmail, cleanPassword);
       }
 
       if (res && res.access_token) {
+        const pinToSave = res.user?.secret_pin || secretPin || '6728';
         localStorage.setItem('laptopguard_last_email', cleanEmail);
+        localStorage.setItem('laptopguard_secret_pin', pinToSave);
+        sessionStorage.setItem('laptopguard_master_unlocked', 'true');
         loginUser(res.user, res.access_token);
         onSuccess();
       }
@@ -159,6 +163,30 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
               />
             </div>
           </div>
+
+          {isRegister && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-bold text-slate-300">Secret Passcode (PIN)</label>
+                <span className="text-[10px] text-cyan-400 font-bold">4-6 Digits</span>
+              </div>
+              <div className="relative">
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  placeholder="6728"
+                  value={secretPin}
+                  onChange={(e) => setSecretPin(e.target.value.replace(/\D/g, ''))}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-cyan-300 font-mono tracking-widest text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all font-bold"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Private PIN to unlock Sentinel Dashboard and Remote Controls (Default: 6728).
+              </p>
+            </div>
+          )}
 
           <button
             type="submit"

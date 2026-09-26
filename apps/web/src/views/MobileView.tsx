@@ -28,11 +28,13 @@ import {
   ChevronRight,
   Smartphone,
   Navigation,
-  Play
+  Play,
+  QrCode
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
 import { BrandLogo } from '../components/BrandLogo';
+import { QRScannerModal } from '../components/Modals/QRScannerModal';
 
 interface MobileViewProps {
   onBackToLanding: () => void;
@@ -69,6 +71,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
 
   // Camera Live & Permission states (On-demand hardware access)
   const [cameraPermitted, setCameraPermitted] = useState<boolean>(() => {
@@ -228,6 +231,14 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               </button>
             )}
             <button
+              onClick={() => setIsQrScannerOpen(true)}
+              className="ios-bubble-btn py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+              title="Scan Laptop Screen QR Code to Bond"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>{currentDev ? 'Bonded QR' : 'Pair QR'}</span>
+            </button>
+            <button
               onClick={() => refreshAll()}
               className="ios-bubble-btn p-2 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200/80 shadow-xs cursor-pointer"
               title="Refresh Telemetry"
@@ -308,11 +319,19 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </div>
 
                 <button
+                  onClick={() => setIsQrScannerOpen(true)}
+                  className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-500/25 ios-bubble-btn flex items-center justify-center gap-2 cursor-pointer mb-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Scan Laptop Screen QR Code</span>
+                </button>
+
+                <button
                   onClick={() => refreshAll()}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs ios-bubble-btn flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 font-bold text-xs shadow-xs ios-bubble-btn flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Check for Linked Laptop</span>
+                  <span>Refresh Linked Devices</span>
                 </button>
               </div>
             ) : (
@@ -325,7 +344,17 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                         <Laptop className="w-4 h-4 text-blue-600" />
                       </div>
                       <div>
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900">{currentDev.device_name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900">{currentDev.device_name}</h4>
+                          <button
+                            onClick={() => setIsQrScannerOpen(true)}
+                            className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                            title="Scan another laptop QR code"
+                          >
+                            <QrCode className="w-3 h-3" />
+                            <span>Switch</span>
+                          </button>
+                        </div>
                         <span className="text-[10px] text-slate-400 font-mono">Sentinel ID: {currentDev.id}</span>
                       </div>
                     </div>
@@ -946,6 +975,13 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         </button>
 
       </nav>
+
+      {/* QR Scanner Modal for Device Bonding */}
+      <QRScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        onBonded={(dev) => setSelectedDevice(dev)}
+      />
 
     </div>
   );

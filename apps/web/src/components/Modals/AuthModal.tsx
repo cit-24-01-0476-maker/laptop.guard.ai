@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, User, X, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Shield, Lock, Mail, User, X, CheckCircle2, ArrowRight, KeyRound } from 'lucide-react';
 import { api } from '../../services/api';
 
 import { useSecurity } from '../../context/SecurityContext';
@@ -16,6 +16,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('laptopguard_last_email') || '');
   const [password, setPassword] = useState('');
+  const [secretPin, setSecretPin] = useState('6728');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -37,13 +38,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     try {
       let res;
       if (isRegister) {
-        res = await api.register(cleanEmail, cleanPassword, (fullName || cleanEmail.split('@')[0]).trim());
+        res = await api.register(cleanEmail, cleanPassword, (fullName || cleanEmail.split('@')[0]).trim(), secretPin);
       } else {
         res = await api.login(cleanEmail, cleanPassword);
       }
 
       if (res && res.access_token) {
+        const pinToSave = res.user?.secret_pin || secretPin || '6728';
         localStorage.setItem('laptopguard_last_email', cleanEmail);
+        localStorage.setItem('laptopguard_secret_pin', pinToSave);
+        sessionStorage.setItem('laptopguard_master_unlocked', 'true');
         loginUser(res.user, res.access_token);
         onSuccess(res.user);
         onClose();
@@ -117,7 +121,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5" />
                 <input
                   type="text"
-                  placeholder="Oska Perera"
+                  placeholder="Your Full Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-inner"
@@ -160,6 +164,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               />
             </div>
           </div>
+
+          {isRegister && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Secret Access Passcode (PIN)
+                </label>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">4-6 Digits</span>
+              </div>
+              <div className="relative flex items-center">
+                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5" />
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={secretPin}
+                  onChange={(e) => setSecretPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="6728"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 text-xs font-mono font-bold tracking-widest text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-inner"
+                  required
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                Your private security PIN to access the Sentinel Dashboard and Mobile Remote (Default: 6728).
+              </p>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 text-rose-600 dark:text-rose-400 text-xs font-bold text-center">

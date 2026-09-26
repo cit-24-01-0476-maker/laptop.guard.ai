@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Callable, Optional
 import customtkinter as ctk
 import requests
+from PIL import Image
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -371,14 +376,121 @@ class ModernAgentGUI:
         tabview.pack(fill="both", expand=True)
 
         tab_overview = tabview.add("Overview & Shield")
+        tab_pairing = tabview.add("📱 Pair Phone (QR)")
         tab_watchdogs = tabview.add("Watchdogs & Policy")
         tab_camera = tabview.add("Live Camera Feed")
         tab_events = tabview.add("Audit Trail")
 
         self._build_overview_tab(tab_overview)
+        self._build_pairing_tab(tab_pairing)
         self._build_watchdogs_tab(tab_watchdogs)
         self._build_camera_tab(tab_camera)
         self._build_events_tab(tab_events)
+
+    def _build_pairing_tab(self, parent):
+        container = ctk.CTkFrame(parent, corner_radius=20, fg_color=("#F8FAFC", "#0F172A"))
+        container.pack(fill="both", expand=True, padx=12, pady=12)
+
+        # Header
+        head_frame = ctk.CTkFrame(container, fg_color="transparent")
+        head_frame.pack(fill="x", padx=16, pady=(16, 8))
+
+        ctk.CTkLabel(
+            head_frame,
+            text="📱 Mobile Companion Device Bonding",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=("#1E293B", "#38BDF8")
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            head_frame,
+            text="Scan this QR code from your phone's LaptopGuard app to establish an exclusive cryptographic bond.",
+            font=ctk.CTkFont(size=12),
+            text_color="#64748B"
+        ).pack(anchor="w", pady=(2, 0))
+
+        # Main content: QR Code on Left, Instructions on Right
+        body_split = ctk.CTkFrame(container, fg_color="transparent")
+        body_split.pack(fill="both", expand=True, padx=16, pady=10)
+
+        # QR Frame
+        qr_frame = ctk.CTkFrame(body_split, corner_radius=18, fg_color="white", width=240, height=240)
+        qr_frame.pack(side="left", padx=(0, 20), pady=10)
+        qr_frame.pack_propagate(False)
+
+        # Generate QR Code image
+        qr_image = self._generate_pairing_qr()
+        if qr_image:
+            qr_label = ctk.CTkLabel(qr_frame, image=qr_image, text="")
+            qr_label.pack(expand=True)
+            self.qr_label = qr_label
+        else:
+            ctk.CTkLabel(qr_frame, text="QR Module Unavailable", text_color="black").pack(expand=True)
+
+        # Right side: Instructions & Info
+        info_frame = ctk.CTkFrame(body_split, fg_color="transparent")
+        info_frame.pack(side="left", fill="both", expand=True, pady=5)
+
+        # Device details card
+        dev_card = ctk.CTkFrame(info_frame, corner_radius=14, fg_color=("#F1F5F9", "#1E293B"))
+        dev_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(dev_card, text="LAPTOP HARDWARE IDENTITY", font=ctk.CTkFont(size=11, weight="bold"), text_color="#94A3B8").pack(anchor="w", padx=14, pady=(10, 2))
+        ctk.CTkLabel(dev_card, text=f"💻 {self.device_name}", font=ctk.CTkFont(size=14, weight="bold"), text_color=("#0F172A", "#F8FAFC")).pack(anchor="w", padx=14)
+        ctk.CTkLabel(dev_card, text=f"Hardware ID: {self.device_id}", font=ctk.CTkFont(size=11), text_color="#64748B").pack(anchor="w", padx=14, pady=(2, 10))
+
+        # Step-by-Step Instructions
+        steps_card = ctk.CTkFrame(info_frame, corner_radius=14, fg_color=("#F1F5F9", "#1E293B"))
+        steps_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(steps_card, text="QUICK 3-STEP PHONE PAIRING", font=ctk.CTkFont(size=11, weight="bold"), text_color="#94A3B8").pack(anchor="w", padx=14, pady=(10, 4))
+        
+        steps = [
+            f"1. Open LaptopGuard Mobile App on your phone.",
+            f"2. Sign in with your account: {self.user_email}",
+            f"3. Tap 'Pair Laptop via QR' and scan the code on the left."
+        ]
+        for step in steps:
+            ctk.CTkLabel(steps_card, text=step, font=ctk.CTkFont(size=12), text_color=("#334155", "#E2E8F0")).pack(anchor="w", padx=14, pady=2)
+        ctk.CTkLabel(steps_card, text="", height=4).pack()
+
+        # Status & Refresh button
+        btn_row = ctk.CTkFrame(info_frame, fg_color="transparent")
+        btn_row.pack(fill="x")
+
+        refresh_btn = ctk.CTkButton(
+            btn_row,
+            text="🔄 Refresh QR Code",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#2563EB",
+            hover_color="#1D4ED8",
+            corner_radius=12,
+            height=36,
+            command=self._refresh_qr
+        )
+        refresh_btn.pack(side="left")
+
+    def _generate_pairing_qr(self):
+        if not qrcode:
+            return None
+        payload = json.dumps({
+            "type": "LAPTOPGUARD_PAIR",
+            "device_id": self.device_id,
+            "device_name": self.device_name,
+            "email": self.user_email or "",
+            "timestamp": int(time.time())
+        })
+        qr = qrcode.QRCode(version=1, box_size=6, border=2)
+        qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        return ctk.CTkImage(light_image=img, dark_image=img, size=(220, 220))
+
+    def _refresh_qr(self):
+        new_img = self._generate_pairing_qr()
+        if new_img and hasattr(self, 'qr_label') and self.qr_label:
+            self.qr_label.configure(image=new_img)
+            self.log_event("Pairing QR code refreshed.")
 
     def _handle_signout(self):
         self._clear_session()

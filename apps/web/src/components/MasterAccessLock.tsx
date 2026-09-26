@@ -61,13 +61,16 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
   };
 
   const handleDigit = (digit: string) => {
-    if (pin.length >= 4 || isSuccess) return;
+    if (pin.length >= 6 || isSuccess) return;
     setError(null);
     playSound('tap');
     const newPin = pin + digit;
     setPin(newPin);
 
-    if (newPin.length === 4) {
+    const savedPin = localStorage.getItem('laptopguard_secret_pin') || CORRECT_PIN;
+    if (newPin === savedPin || newPin === CORRECT_PIN) {
+      validatePin(newPin);
+    } else if (newPin.length >= Math.max(savedPin.length, 4) && (newPin.length === 6 || newPin.length === savedPin.length)) {
       validatePin(newPin);
     }
   };
@@ -87,7 +90,8 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
   };
 
   const validatePin = (inputPin: string) => {
-    if (inputPin === CORRECT_PIN) {
+    const savedPin = localStorage.getItem('laptopguard_secret_pin') || CORRECT_PIN;
+    if (inputPin === savedPin || inputPin === CORRECT_PIN) {
       setIsSuccess(true);
       playSound('success');
       sessionStorage.setItem('laptopguard_master_unlocked', 'true');
@@ -96,7 +100,7 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
       }, 700);
     } else {
       playSound('error');
-      setError('ACCESS DENIED • INVALID PIN');
+      setError('ACCESS DENIED • INVALID PASSCODE');
       setIsShaking(true);
       setTimeout(() => {
         setIsShaking(false);
@@ -110,6 +114,8 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key >= '0' && e.key <= '9') {
         handleDigit(e.key);
+      } else if (e.key === 'Enter') {
+        validatePin(pin);
       } else if (e.key === 'Backspace') {
         handleDelete();
       } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
@@ -186,18 +192,18 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
             </span>
           </h2>
           <p className="text-xs text-slate-400 mt-1 font-medium">
-            Enter 4-digit Master Security PIN to unlock access
+            Enter your Secret Passcode or Master PIN to unlock console
           </p>
         </div>
 
         {/* Masked PIN Indicators */}
-        <div className="flex items-center gap-4 my-3">
-          {[0, 1, 2, 3].map((index) => {
+        <div className="flex items-center gap-3 my-3">
+          {Array.from({ length: Math.max(4, pin.length) }).map((_, index) => {
             const hasDigit = pin.length > index;
             return (
               <div
                 key={index}
-                className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                className={`w-3.5 h-3.5 rounded-full transition-all duration-200 ${
                   isSuccess
                     ? 'bg-emerald-400 shadow-[0_0_12px_#34D399] scale-110'
                     : error
