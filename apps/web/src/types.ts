@@ -58,6 +58,7 @@ export interface Device {
   last_seen: string;
   created_at: string;
   last_location?: DeviceLocation;
+  metadata?: Record<string, any>;
 }
 
 export interface SecurityEvent {
