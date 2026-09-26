@@ -13,8 +13,14 @@ namespace LaptopGuard.Core.Ipc
     public class NamedPipeIpcServer : IDisposable
     {
         public const string PipeName = "LaptopGuardSecurity";
+        private readonly string _pipeName;
         private readonly CancellationTokenSource _cts = new();
         private readonly ConcurrentDictionary<string, NamedPipeServerStream> _clients = new();
+
+        public NamedPipeIpcServer(string pipeName = PipeName)
+        {
+            _pipeName = pipeName;
+        }
 
         public event EventHandler<IpcMessage>? OnMessageReceived;
         public event EventHandler<string>? OnClientConnected;
@@ -32,7 +38,7 @@ namespace LaptopGuard.Core.Ipc
                 try
                 {
                     var server = new NamedPipeServerStream(
-                        PipeName,
+                        _pipeName,
                         PipeDirection.InOut,
                         NamedPipeServerStream.MaxAllowedServerInstances,
                         PipeTransmissionMode.Byte,

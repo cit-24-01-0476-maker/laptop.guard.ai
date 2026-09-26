@@ -55,6 +55,11 @@ namespace LaptopGuard.Core.State
                 if (graceSeconds <= 0)
                 {
                     CurrentState = DeviceSecurityState.Armed;
+                    var (hasAc, _) = Native.Win32Native.QueryCurrentPower();
+                    if (!hasAc)
+                    {
+                        TriggerIncident("POWER_DISCONNECT", IncidentSeverity.Critical, "AC Power Disconnected", "AC power already disconnected when armed");
+                    }
                     return true;
                 }
 
@@ -72,6 +77,11 @@ namespace LaptopGuard.Core.State
                             if (_currentState == DeviceSecurityState.ArmingGrace && !token.IsCancellationRequested)
                             {
                                 CurrentState = DeviceSecurityState.Armed;
+                                var (hasAc, _) = Native.Win32Native.QueryCurrentPower();
+                                if (!hasAc)
+                                {
+                                    TriggerIncident("POWER_DISCONNECT", IncidentSeverity.Critical, "AC Power Disconnected", "AC power disconnected during arming grace");
+                                }
                             }
                         }
                     }

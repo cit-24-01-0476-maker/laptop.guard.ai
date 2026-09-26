@@ -9,8 +9,9 @@ namespace LaptopGuard.Tests
 {
     public class IpcCommunicationTests : IDisposable
     {
-        private readonly NamedPipeIpcServer _server = new();
-        private readonly NamedPipeIpcClient _client = new();
+        private static readonly string TestPipeName = "LaptopGuardTest_" + Guid.NewGuid().ToString("N");
+        private readonly NamedPipeIpcServer _server = new(TestPipeName);
+        private readonly NamedPipeIpcClient _client = new(TestPipeName);
 
         [Fact]
         public async Task ServerAndClient_CanExchangeBidirectionalMessages()

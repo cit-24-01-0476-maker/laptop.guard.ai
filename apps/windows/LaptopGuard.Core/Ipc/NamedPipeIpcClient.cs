@@ -12,9 +12,15 @@ namespace LaptopGuard.Core.Ipc
     public class NamedPipeIpcClient : IDisposable
     {
         public const string PipeName = "LaptopGuardSecurity";
+        private readonly string _pipeName;
         private NamedPipeClientStream? _clientStream;
         private readonly CancellationTokenSource _cts = new();
         private readonly SemaphoreSlim _writeLock = new(1, 1);
+
+        public NamedPipeIpcClient(string pipeName = PipeName)
+        {
+            _pipeName = pipeName;
+        }
 
         public bool IsConnected => _clientStream != null && _clientStream.IsConnected;
         public event EventHandler<IpcMessage>? OnMessageReceived;
@@ -32,7 +38,7 @@ namespace LaptopGuard.Core.Ipc
             {
                 try
                 {
-                    _clientStream = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                    _clientStream = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
                     await _clientStream.ConnectAsync(3000, token);
 
                     OnConnected?.Invoke(this, EventArgs.Empty);

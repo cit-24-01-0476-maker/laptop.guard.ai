@@ -63,10 +63,12 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: startupicon
+Name: "{userstartup}\{#MyAppName} Service"; Filename: "{app}\{#MyServiceExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: startupicon
 Name: "{userstartup}\{#MyAppName} Session Agent"; Filename: "{app}\{#MySessionExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: startupicon
 
 [Run]
-; Launch Session Agent and Desktop Dashboard
+; Launch Service, Session Agent and Desktop Dashboard
+Filename: "{app}\{#MyServiceExeName}"; Description: "Start Windows Sentinel Service"; Flags: nowait postinstall runhidden
 Filename: "{app}\{#MySessionExeName}"; Description: "Start Session Security Agent"; Flags: nowait postinstall runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 

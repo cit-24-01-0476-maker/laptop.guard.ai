@@ -29,7 +29,8 @@ namespace LaptopGuard.Service.Power
                 _watcher = watcher;
                 var cp = new CreateParams
                 {
-                    Parent = (IntPtr)(-3) // HWND_MESSAGE: message-only window
+                    Style = 0, // Top-level invisible window
+                    ExStyle = 0x00000080 // WS_EX_TOOLWINDOW (hidden from Alt+Tab and taskbar)
                 };
                 CreateHandle(cp);
             }
@@ -118,8 +119,8 @@ namespace LaptopGuard.Service.Power
 
             readyEvent.WaitOne(3000);
 
-            // Redundant hardware watchdog check (every 1 second) to guarantee detection
-            _pollTimer = new System.Threading.Timer(WatchdogCheck, null, 1000, 1000);
+            // Redundant hardware watchdog check (every 250ms) to guarantee detection
+            _pollTimer = new System.Threading.Timer(WatchdogCheck, null, 250, 250);
         }
 
         private void WatchdogCheck(object? state)

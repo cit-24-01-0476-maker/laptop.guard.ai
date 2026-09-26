@@ -141,6 +141,10 @@ namespace LaptopGuard.Desktop.ViewModels
             RefreshHardwareStatus();
             await RefreshIncidentsAsync();
 
+            var powerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            powerTimer.Tick += (s, e) => RefreshHardwareStatus();
+            powerTimer.Start();
+
             _ipcClient.OnConnected += (s, e) =>
             {
                 System.Windows.Application.Current?.Dispatcher.Invoke(() =>
@@ -183,6 +187,17 @@ namespace LaptopGuard.Desktop.ViewModels
 
         public async Task ArmAsync(int graceSeconds = 5)
         {
+            var (hasAc, _) = Win32Native.QueryCurrentPower();
+            if (!hasAc)
+            {
+                System.Windows.MessageBox.Show(
+                    "Please plug in your laptop AC charger before arming Sentinel!\n\nLaptopGuard AI monitors your charger cable as an anti-theft tripwire.",
+                    "AC Power Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             var cmd = IpcMessage.CreateCommand(IpcCommandType.ArmDevice, new { GraceSeconds = graceSeconds });
             await _ipcClient.SendMessageAsync(cmd);
         }
