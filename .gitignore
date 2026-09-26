@@ -63,3 +63,11 @@ apps/web/android/build/
 !apps/web/public/LaptopGuard-AI.apk
 *.aab
 scratch/
+
+# .NET / C#
+[Bb]in/
+[Oo]bj/
+apps/windows/publish/
+*.user
+*.suo
+.vs/

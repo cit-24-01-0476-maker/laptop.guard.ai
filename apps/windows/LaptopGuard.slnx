@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="LaptopGuard.Core/LaptopGuard.Core.csproj" />
+  <Project Path="LaptopGuard.Service/LaptopGuard.Service.csproj" />
+  <Project Path="LaptopGuard.SessionAgent/LaptopGuard.SessionAgent.csproj" />
+  <Project Path="LaptopGuard.Tests/LaptopGuard.Tests.csproj" />
+</Solution>
