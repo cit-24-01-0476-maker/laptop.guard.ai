@@ -97,7 +97,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
         payload = { device_id: text.trim() };
       }
 
-      const deviceId = payload.device_id || payload.id;
+      const deviceId = payload.device_id || payload.DeviceId || payload.id || payload.Id;
       if (!deviceId) {
         throw new Error('Invalid QR Code: No hardware ID found.');
       }

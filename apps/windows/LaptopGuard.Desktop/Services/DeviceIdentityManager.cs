@@ -17,11 +17,22 @@ namespace LaptopGuard.Desktop.Services
 
     public class PairingPayload
     {
+        [System.Text.Json.Serialization.JsonPropertyName("device_id")]
         public string DeviceId { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("device_name")]
         public string DeviceName { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pairing_token")]
         public string PairingToken { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cloud_url")]
         public string CloudUrl { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generated_at")]
         public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expires_in_seconds")]
         public int ExpiresInSeconds { get; set; } = 300;
     }
 
