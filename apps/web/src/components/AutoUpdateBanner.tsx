@@ -1,36 +1,41 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback } from 'react';
 
 const CURRENT_CLIENT_VERSION = '1.6.1';
 
 /**
- * Silent Auto-Updater: NO banner, NO "update available" message.
- * Detects new version from /version.json → silently clears caches → reloads.
- * User sees nothing — page just refreshes with newest code.
+ * Robust Silent Auto-Updater:
+ * - NO banners, NO spinners, NO repeated reloads
+ * - Strict session guard prevents more than 1 reload per app session
+ * - Automatically keeps localStorage in sync with CURRENT_CLIENT_VERSION
  */
 export const AutoUpdateBanner: React.FC = () => {
-  const hasApplied = useRef(false);
-
   const silentUpdate = useCallback((newVersion: string) => {
-    if (hasApplied.current) return;
-    hasApplied.current = true;
+    // Session-level circuit breaker: NEVER reload more than once per app run
+    if (sessionStorage.getItem('laptopguard_update_applied')) {
+      return;
+    }
+    sessionStorage.setItem('laptopguard_update_applied', 'true');
+    localStorage.setItem('laptopguard_client_version', newVersion);
 
-    // Unregister service workers to clear cached assets
+    // Unregister service workers if any
     if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
           registration.unregister();
         }
-      });
+      }).catch(() => {});
     }
 
-    // Store new version so we don't loop
-    localStorage.setItem('laptopguard_client_version', newVersion);
-
-    // Silent hard reload — user won't see any banner
+    // Single graceful reload with cache bust
     window.location.reload();
   }, []);
 
   const checkForUpdates = useCallback(async () => {
+    // If already updated in this session, do nothing
+    if (sessionStorage.getItem('laptopguard_update_applied')) {
+      return;
+    }
+
     try {
       const res = await fetch(`/version.json?t=${Date.now()}`, {
         cache: 'no-store',
@@ -40,39 +45,41 @@ export const AutoUpdateBanner: React.FC = () => {
 
       const data = await res.json();
       const serverVersion = data.version;
-      const localVersion = localStorage.getItem('laptopguard_client_version') || CURRENT_CLIENT_VERSION;
+      const currentStored = localStorage.getItem('laptopguard_client_version');
 
-      if (serverVersion && serverVersion !== localVersion) {
-        // Silently apply update — no banner, no user interaction needed
+      // If no stored version or stored version is outdated, check against CURRENT_CLIENT_VERSION first
+      if (!currentStored) {
+        localStorage.setItem('laptopguard_client_version', CURRENT_CLIENT_VERSION);
+        return;
+      }
+
+      // Only reload if server version is genuinely newer than CURRENT_CLIENT_VERSION
+      if (serverVersion && serverVersion !== CURRENT_CLIENT_VERSION && serverVersion !== currentStored) {
         silentUpdate(serverVersion);
       }
     } catch {
-      // Offline or network glitch — silently ignore
+      // Network glitch or offline — do nothing
     }
   }, [silentUpdate]);
 
   useEffect(() => {
-    // Check on load after a short delay (let app render first)
-    const initialTimer = setTimeout(checkForUpdates, 2000);
+    // Ensure localStorage has at least CURRENT_CLIENT_VERSION
+    const currentStored = localStorage.getItem('laptopguard_client_version');
+    if (!currentStored || currentStored < CURRENT_CLIENT_VERSION) {
+      localStorage.setItem('laptopguard_client_version', CURRENT_CLIENT_VERSION);
+    }
 
-    // Check periodically every 45 seconds
-    const interval = setInterval(checkForUpdates, 45000);
+    // Check once 5 seconds after app has fully loaded and stabilized
+    const initialTimer = setTimeout(checkForUpdates, 5000);
 
-    // Also check when tab becomes visible (user returns to app)
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        checkForUpdates();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
+    // Check at relaxed intervals (every 10 minutes)
+    const interval = setInterval(checkForUpdates, 600000);
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [checkForUpdates]);
 
-  // Render nothing — completely invisible silent updater
   return null;
 };

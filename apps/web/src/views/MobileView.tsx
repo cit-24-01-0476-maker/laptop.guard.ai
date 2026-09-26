@@ -67,7 +67,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'map' | 'alerts' | 'profile'>('home');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [currentVersion, setCurrentVersion] = useState('1.5.0');
+  const [currentVersion, setCurrentVersion] = useState(() => localStorage.getItem('laptopguard_client_version') || '1.6.1');
   const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
@@ -132,58 +132,33 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     return () => clearInterval(pollTimer);
   }, [activeTab, cameraMode, currentDev?.id]);
 
-  // Check Over-The-Air (OTA) Auto-Update — SILENT for auto, shows progress only for manual
-  const checkAutoUpdate = async (manual = false) => {
+  // Manual Check for App Updates (triggered when user clicks button in Profile tab)
+  const checkAutoUpdate = async (manual = true) => {
+    if (!manual) return;
     setIsCheckingUpdate(true);
+    setUpdateMessage(null);
     try {
       const res = await fetch(getDownloadUrl('manifest'));
       const data = await res.json();
-      if (data.latest_version) {
-        if (data.latest_version !== currentVersion) {
-          if (Capacitor.isNativePlatform()) {
-            if (manual) {
-              setUpdateMessage(`⬆️ Updating to v${data.latest_version}...`);
-            }
-            // Capacitor with server.url loads live web — just reload
-            setTimeout(() => {
-              localStorage.setItem('laptopguard_client_version', data.latest_version);
-              setCurrentVersion(data.latest_version);
-              window.location.reload();
-            }, manual ? 800 : 100);
-          } else {
-            // Web browser — unregister SW and silent reload
-            if ('serviceWorker' in navigator) {
-              const regs = await navigator.serviceWorker.getRegistrations();
-              for (const reg of regs) {
-                await reg.update();
-              }
-            }
-            if (manual) {
-              setUpdateMessage(`⬆️ Updating to v${data.latest_version}...`);
-            }
-            localStorage.setItem('laptopguard_client_version', data.latest_version);
-            setTimeout(() => {
-              window.location.reload();
-            }, manual ? 800 : 100);
-          }
-        } else {
-          setCurrentVersion(data.latest_version);
-          if (manual) {
-            setUpdateMessage(`✅ App is up to date (v${data.latest_version}) • Auto-Update Active`);
-          }
-        }
+      const currentVer = localStorage.getItem('laptopguard_client_version') || '1.6.1';
+      if (data.latest_version && data.latest_version !== currentVer) {
+        setUpdateMessage(`⬆️ Updating to v${data.latest_version}...`);
+        localStorage.setItem('laptopguard_client_version', data.latest_version);
+        setCurrentVersion(data.latest_version);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        setUpdateMessage(`✅ App is running the latest version (v${currentVer})`);
+        setTimeout(() => setUpdateMessage(null), 3000);
       }
     } catch (e) {
-      if (manual) setUpdateMessage('✅ App is running the latest live OTA bundle.');
+      setUpdateMessage('✅ App is up to date.');
+      setTimeout(() => setUpdateMessage(null), 3000);
     } finally {
       setIsCheckingUpdate(false);
-      if (manual) setTimeout(() => setUpdateMessage(null), 4000);
     }
   };
-
-  useEffect(() => {
-    checkAutoUpdate(false);
-  }, []);
 
   // Siren countdown timer
   useEffect(() => {
@@ -280,19 +255,12 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
           </div>
         </div>
 
-        {/* Update alert banner */}
+        {/* Update notification toast (only when user manually checks in Profile tab) */}
         {updateMessage && (
           <div
-            onClick={() => {
-              if (Capacitor.isNativePlatform()) {
-                window.location.href = getDownloadUrl('android-apk');
-              } else {
-                window.location.reload();
-              }
-            }}
+            onClick={() => setUpdateMessage(null)}
             className="mt-2 py-1.5 px-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold text-center animate-in fade-in cursor-pointer hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5 shadow-xs"
           >
-            <RefreshCw className="w-3 h-3 text-blue-600" />
             <span>{updateMessage}</span>
           </div>
         )}
