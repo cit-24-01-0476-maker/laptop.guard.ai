@@ -1,7 +1,9 @@
 import React from 'react';
 import { User, KeyRound, Smartphone, ShieldCheck, LogOut, Laptop, CheckCircle2 } from 'lucide-react';
+import { useSecurity } from '../context/SecurityContext';
 
 export const AccountView: React.FC = () => {
+  const { user } = useSecurity();
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
@@ -23,11 +25,13 @@ export const AccountView: React.FC = () => {
       <div className="jelly-card p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/25">
-            OP
+            {(user?.full_name || user?.email || 'U').substring(0, 2).toUpperCase()}
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white">Oska Perera</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">oska@laptopguard.ai</p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">
+              {user?.full_name || user?.email?.split('@')[0] || 'Member'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email || 'Signed In'}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="jelly-pill text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700/50 uppercase">
                 Device Fleet Owner

@@ -23,7 +23,12 @@ import {
   Sparkles,
   Layers,
   Cpu,
-  Play
+  Play,
+  Apple,
+  X,
+  Share2,
+  PlusSquare,
+  Copy
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { getDownloadUrl } from '../services/api';
@@ -47,6 +52,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
   onLockMasterAccess
 }) => {
   const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
+  const [showIosModal, setShowIosModal] = useState<boolean>(false);
+  const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(window.location.origin).then(() => {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2500);
+    }).catch(() => {});
+  };
 
   // Interactive Live Simulator in the Hero Card
   const [simAcConnected, setSimAcConnected] = useState<boolean>(true);
@@ -242,6 +256,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <span>Android App (.apk)</span>
               </button>
 
+              <button
+                onClick={() => setShowIosModal(true)}
+                className="ios-bubble-btn flex items-center gap-2 py-3 sm:py-3.5 px-4 sm:px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs cursor-pointer"
+              >
+                <Apple className="w-4 h-4 text-white" />
+                <span>Apple iOS</span>
+              </button>
+
               {onOpenIntro && (
                 <button
                   onClick={onOpenIntro}
@@ -284,7 +306,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   <div className="w-3 h-3 rounded-full bg-amber-400" />
                   <div className="w-3 h-3 rounded-full bg-emerald-400" />
                   <span className="text-[11px] sm:text-xs font-bold text-slate-500 font-mono ml-1.5 truncate">
-                    Dell G15 Sentinel • Sri Lanka
+                    Guarded Windows Laptop • Sentinel Active
                   </span>
                 </div>
                 <span className={`px-2.5 py-0.5 text-[10px] font-black rounded-full uppercase tracking-wider flex items-center gap-1 border ${
@@ -555,7 +577,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               {/* Phone Screen Display */}
               <div className="w-full rounded-[30px] bg-[#F0F4FA] p-3.5 text-slate-800 space-y-3 shadow-inner">
                 <div className="flex items-center justify-between text-[10px] font-bold">
-                  <span className="text-slate-400">Dell G15 5530</span>
+                  <span className="text-slate-400">Windows 11 Sentinel</span>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">ARMED</span>
                 </div>
 
@@ -565,7 +587,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     <span>Power Sentinel</span>
                     <span className="text-emerald-600">AC Plugged</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Battery: 99% • Sri Lanka</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Battery: 99% • Watchdog Active</p>
                 </div>
 
                 {/* Mobile action buttons */}
@@ -599,122 +621,161 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </section>
 
-      {/* Downloads Hub */}
+      {/* Unified Downloads & Client Hub */}
       <section id="downloads" className="py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto border-t border-slate-200/60">
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
           <span className="jelly-pill px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50/90 border border-blue-200 shadow-xs">
-            Installation & Access Hub
+            Multi-Platform Sentinel Hub
           </span>
           <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Direct Downloads for Windows & Mobile
+            Deploy LaptopGuard AI Across All Devices
           </h2>
           <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            Download the official software packages directly from this server. Zero third-party trackers, zero covert telemetry.
+            One-touch downloads for Windows, Android, and Apple iOS. Built for any laptop manufacturer in the world (HP, Dell, Lenovo, Asus, Acer, Apple).
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
-          {/* Card 1: Windows Desktop Agent */}
-          <div className="ios-jelly-card p-6 sm:p-8 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="bubble-icon w-12 sm:w-14 h-12 sm:h-14 bubble-blue shadow-xs">
-                <Laptop className="w-6 sm:w-7 h-6 sm:h-7 text-blue-600" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* Card 1: Windows Desktop Sentinel Setup */}
+          <div className="ios-jelly-card p-6 sm:p-7 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="bubble-icon w-12 h-12 bubble-blue shadow-xs">
+                  <Laptop className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
+                  v1.5.2 Setup Wizard
+                </span>
               </div>
-              <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
-                v1.5.0 Signed
-              </span>
+
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900">Windows PC Sentinel</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Windows 10 & 11 (All Laptop Brands)</p>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Native Win32 hardware sentinel. Professional Setup Wizard installs directly onto your PC with Desktop shortcut and uninstaller.
+              </p>
+
+              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>500ms AC disconnect loop & siren</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Hardware Unique MachineGuid pairing</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Over-The-Air automated background updates</span>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <h3 className="text-lg sm:text-xl font-black text-slate-900">Windows Hardware Agent</h3>
-              <p className="text-xs text-slate-500 mt-0.5">For Windows 10 & Windows 11 (64-bit)</p>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Installs the native Win32 background sentinel on your laptop. Enables 500ms AC power polling, volume boost, and emergency LockWorkStation integration.
-            </p>
-
-            <div className="pt-2 border-t border-slate-100 space-y-2 text-xs text-slate-600">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Package Size:</span>
-                <span className="font-mono font-bold text-slate-800">79.7 MB Standalone .exe</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Desktop Shortcut:</span>
-                <span className="font-semibold text-emerald-600">Auto-Created on Install</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
+            <div className="pt-4">
               <button
                 onClick={handleDownloadSetup}
-                className="ios-bubble-btn sheen-glow flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 cursor-pointer"
+                className="ios-bubble-btn sheen-glow w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Install Setup.exe</span>
-              </button>
-              <button
-                onClick={handleDownloadExe}
-                className="ios-bubble-btn py-3 px-3.5 rounded-2xl bg-white/80 hover:bg-white border border-slate-200/90 text-slate-700 text-xs font-bold shadow-xs cursor-pointer"
-                title="Download Standalone Portable .exe"
-              >
-                <span>.EXE</span>
-              </button>
-              <button
-                onClick={handleDownloadWindows}
-                className="ios-bubble-btn py-3 px-3.5 rounded-2xl bg-white/80 hover:bg-white border border-slate-200/90 text-slate-700 text-xs font-bold shadow-xs cursor-pointer"
-                title="Download Portable .zip Package"
-              >
-                <span>.ZIP</span>
+                <span>Download Windows Setup (.exe)</span>
               </button>
             </div>
           </div>
 
-          {/* Card 2: Android Mobile App APK */}
-          <div className="ios-jelly-card p-6 sm:p-8 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="bubble-icon w-12 sm:w-14 h-12 sm:h-14 bubble-cyan shadow-xs">
-                <Smartphone className="w-6 sm:w-7 h-6 sm:h-7 text-cyan-600" />
+          {/* Card 2: Android Mobile Companion APK */}
+          <div className="ios-jelly-card p-6 sm:p-7 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="bubble-icon w-12 h-12 bubble-cyan shadow-xs">
+                  <Smartphone className="w-6 h-6 text-cyan-600" />
+                </div>
+                <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  v1.5.2 • 4.7 MB APK
+                </span>
               </div>
-              <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
-                OTA Auto-Update
-              </span>
+
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900">Android Mobile App</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Android 9.0+ Smartphones & Tablets</p>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Dedicated security controller for Android. Ultra-light 4.7 MB package with live webcam monitoring, one-touch siren silencing, and instant remote lock.
+              </p>
+
+              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Ultra-fast 4.7 MB direct download</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Instant Over-The-Air auto updating</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Encrypted device command routing</span>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <h3 className="text-lg sm:text-xl font-black text-slate-900">Android Mobile Companion</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Android 9.0+ & Progressive Web App</p>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Remote command console for your smartphone. Features live webcam monitoring, one-touch siren silencing, and instant Over-The-Air auto-updating.
-            </p>
-
-            <div className="pt-2 border-t border-slate-100 space-y-2 text-xs text-slate-600">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Package Size:</span>
-                <span className="font-mono font-bold text-slate-800">15.8 MB APK</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Auto-Update:</span>
-                <span className="font-semibold text-emerald-600">Enabled (Over-The-Air)</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5">
+            <div className="pt-4 flex gap-2">
               <button
                 onClick={handleDownloadAndroid}
                 className="ios-bubble-btn sheen-glow flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Download Android APK</span>
+                <span>Download Android App (.apk)</span>
               </button>
+            </div>
+          </div>
+
+          {/* Card 3: Apple iOS Companion App */}
+          <div className="ios-jelly-card p-6 sm:p-7 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="bubble-icon w-12 h-12 bubble-mint shadow-xs bg-slate-900 text-white flex items-center justify-center">
+                  <Apple className="w-6 h-6 text-white" />
+                </div>
+                <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                  iOS 15+ Native PWA
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900">Apple iOS Companion</h3>
+                <p className="text-xs text-slate-500 mt-0.5">iPhone, iPad & Mac (Safari Direct)</p>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Liquid Glass security console designed natively for Apple iOS. Instant installation via Safari 'Add to Home Screen' with zero app store delays.
+              </p>
+
+              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Full iOS Liquid Glass bubble interface</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>Master PIN security lock (PIN: 6728)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <span>No APK needed — installs directly in Safari</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4">
               <button
-                onClick={onOpenMobileView}
-                className="ios-bubble-btn py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
-                title="Open Phone Controller View"
+                onClick={() => setShowIosModal(true)}
+                className="ios-bubble-btn sheen-glow w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white text-xs font-bold shadow-lg shadow-slate-900/25 cursor-pointer"
               >
-                <Smartphone className="w-4 h-4" />
+                <Apple className="w-4 h-4 text-white" />
+                <span>Get for iPhone / iPad</span>
               </button>
             </div>
           </div>
@@ -741,6 +802,105 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <span className="font-mono text-[11px] text-slate-400">v1.5.0 Production Signed</span>
         </div>
       </footer>
+
+      {/* Apple iOS Guided Installation Modal */}
+      {showIosModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="ios-jelly-card bg-white/95 backdrop-blur-xl border border-white/60 p-6 sm:p-8 rounded-[36px] max-w-md w-full shadow-2xl relative space-y-5">
+            <button
+              onClick={() => setShowIosModal(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md">
+                <Apple className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900">Install on iPhone / iPad</h3>
+                <p className="text-xs text-slate-500">Native Progressive Web App (PWA)</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-700 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/60">
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
+                  1
+                </span>
+                <div>
+                  <strong className="text-slate-900">Open in Safari:</strong>
+                  <p className="text-slate-600 mt-0.5">Open this web page in Apple Safari on your iPhone or iPad.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
+                  2
+                </span>
+                <div>
+                  <strong className="text-slate-900">Tap the Share Button:</strong>
+                  <p className="text-slate-600 mt-0.5">
+                    Tap the <Share2 className="w-3.5 h-3.5 inline mx-1 text-blue-600" /> Share icon located at the bottom toolbar of Safari.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
+                  3
+                </span>
+                <div>
+                  <strong className="text-slate-900">Select "Add to Home Screen":</strong>
+                  <p className="text-slate-600 mt-0.5">
+                    Scroll down the options list and tap <PlusSquare className="w-3.5 h-3.5 inline mx-1 text-slate-700" /> <strong>Add to Home Screen</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
+                  4
+                </span>
+                <div>
+                  <strong className="text-slate-900">Tap "Add":</strong>
+                  <p className="text-slate-600 mt-0.5">Tap <strong>Add</strong> in the top-right corner. The LaptopGuard AI icon will appear right on your iOS home screen!</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleCopyUrl}
+                className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                {copiedUrl ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-emerald-700">Link Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 text-slate-600" />
+                    <span>Copy Web URL</span>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setShowIosModal(false);
+                  onOpenMobileView();
+                }}
+                className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
+              >
+                <span>Launch iOS Remote</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

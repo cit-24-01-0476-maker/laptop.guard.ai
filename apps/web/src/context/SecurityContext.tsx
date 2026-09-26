@@ -242,7 +242,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setCriticalAlert({
             title: `CRITICAL ALERT: ${data.event.event_type}`,
             body: data.event.description,
-            deviceName: data.event.device_name || 'Dell G15 Laptop',
+            deviceName: data.event.device_name || selectedDevice?.device_name || 'Guarded Laptop',
             time: new Date().toLocaleTimeString()
           });
         }

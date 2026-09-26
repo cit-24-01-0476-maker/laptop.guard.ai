@@ -122,8 +122,8 @@ export const MapView: React.FC = () => {
       const marker = L.marker([coords.lat, coords.lng], { icon: customIcon }).addTo(map);
       marker.bindPopup(`
         <div style="color: #0F172A; font-family: sans-serif; padding: 4px;">
-          <strong style="font-size: 13px;">${selectedDevice?.device_name || 'Dell G15 Laptop'}</strong><br/>
-          <span style="font-size: 11px; color: #64748B;">Wi-Fi: ${selectedDevice?.current_ssid || 'SLT-Fiber-tysZ8-5G'}</span><br/>
+          <strong style="font-size: 13px;">${selectedDevice?.device_name || 'Guarded Laptop'}</strong><br/>
+          <span style="font-size: 11px; color: #64748B;">Wi-Fi: ${selectedDevice?.current_ssid || 'Wi-Fi Network'}</span><br/>
           <span style="font-size: 11px; color: #2563EB; font-weight: bold;">Live Radar Pinpoint</span>
         </div>
       `);

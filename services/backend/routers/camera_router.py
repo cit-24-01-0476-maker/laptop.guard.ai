@@ -49,7 +49,7 @@ def generate_sentinel_hud_frame(device_id: str) -> bytes:
     draw.line([(center_x, center_y - 160), (center_x, center_y + 160)], fill=(30, 41, 59), width=1)
 
     # Status Labels
-    draw.text((center_x - 110, center_y - 30), "DELL G15 SENTINEL", fill=(255, 255, 255))
+    draw.text((center_x - 110, center_y - 30), "HARDWARE WEBCAM SENTINEL", fill=(255, 255, 255))
     draw.text((center_x - 135, center_y - 5), "PHYSICAL WEBCAM ACTIVE", fill=(0, 229, 255))
     draw.text((center_x - 120, center_y + 20), "ENCRYPTED VIDEO STREAM", fill=(148, 163, 184))
 
@@ -145,12 +145,12 @@ async def start_camera_session(
         device = models.Device(
             id=req.device_id,
             user_id=current_user.id,
-            device_name="Dell G15 Sentinel",
+            device_name="Guarded Laptop",
             device_type="LAPTOP",
             status="Protected",
             battery=100,
             is_charging=True,
-            current_ssid="Campus_Secure_5G",
+            current_ssid="Wi-Fi",
             ip_address="127.0.0.1"
         )
         db.add(device)

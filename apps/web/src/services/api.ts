@@ -36,7 +36,10 @@ export const getDownloadUrl = (endpoint: string): string => {
     return 'https://laptopguard-api.onrender.com/downloads/windows-agent';
   }
   if (clean === 'windows-setup' || clean === 'windows-exe') {
-    return 'https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.exe';
+    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
+      return '/LaptopGuard-Setup.exe';
+    }
+    return 'https://laptopguard-api.onrender.com/downloads/windows-setup';
   }
   if (clean === 'android-apk') {
     if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {

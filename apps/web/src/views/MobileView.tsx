@@ -70,7 +70,10 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
-  // Camera Live states
+  // Camera Live & Permission states (On-demand hardware access)
+  const [cameraPermitted, setCameraPermitted] = useState<boolean>(() => {
+    return localStorage.getItem('laptopguard_cam_allowed') === 'true';
+  });
   const [cameraKey, setCameraKey] = useState<number>(Date.now());
   const [cameraMode, setCameraMode] = useState<'stream' | 'poll'>('stream');
   const [pollUrl, setPollUrl] = useState<string>('');
@@ -107,13 +110,13 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     }
   };
 
-  // Automatically start camera session on laptop when user opens Camera tab
+  // Automatically start camera session on laptop when user opens Camera tab AND has granted permission
   useEffect(() => {
-    if (activeTab === 'camera' && currentDev?.id) {
+    if (activeTab === 'camera' && cameraPermitted && currentDev?.id) {
       api.startCameraSession(currentDev.id).catch(() => {});
       setCameraKey(Date.now());
     }
-  }, [activeTab, currentDev?.id]);
+  }, [activeTab, cameraPermitted, currentDev?.id]);
 
   // Dynamic Snapshot Polling Fallback (500ms intervals)
   useEffect(() => {
@@ -538,6 +541,52 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   Please link your Windows laptop first to stream webcam video and capture photos.
                 </p>
               </div>
+            ) : !cameraPermitted ? (
+              <div className="ios-jelly-card p-6 sm:p-7 rounded-3xl shadow-sm text-center flex flex-col items-center space-y-4">
+                <div className="bubble-icon w-14 h-14 bubble-blue shadow-sm flex items-center justify-center">
+                  <Camera className="w-7 h-7 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900">Hardware Webcam Permission</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
+                    LaptopGuard AI requests permission to access the webcam on <strong className="text-slate-800">{currentDev.device_name}</strong> for intruder surveillance and live photo verification.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl text-[11px] text-amber-800 text-left space-y-1.5 w-full">
+                  <div className="flex items-center gap-2 font-bold">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                    <span>Non-Covert Privacy Guarantee</span>
+                  </div>
+                  <p className="text-[10px] text-amber-700 leading-normal">
+                    When active, the physical camera LED indicator on your laptop will illuminate for transparency. You can revoke this permission at any time.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 w-full pt-1">
+                  <button
+                    onClick={() => setActiveTab('home')}
+                    className="flex-1 py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setCameraPermitted(true);
+                      localStorage.setItem('laptopguard_cam_allowed', 'true');
+                      if (currentDev?.id) {
+                        try {
+                          await api.startCameraSession(currentDev.id);
+                        } catch (e) {}
+                        setCameraKey(Date.now());
+                      }
+                    }}
+                    className="flex-1 py-2.5 px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-blue-500/20 cursor-pointer"
+                  >
+                    Grant Access
+                  </button>
+                </div>
+              </div>
             ) : (
             <div className="ios-jelly-card p-4 rounded-3xl shadow-md">
               <div className="flex items-center justify-between mb-3">
@@ -547,9 +596,24 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   </div>
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900">Physical Webcam Stream</h3>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold border border-rose-200">
-                  HARDWARE LED ON
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold border border-rose-200">
+                    HARDWARE LED ON
+                  </span>
+                  <button
+                    onClick={async () => {
+                      setCameraPermitted(false);
+                      localStorage.removeItem('laptopguard_cam_allowed');
+                      try {
+                        await api.stopCameraSession(currentDev.id);
+                      } catch (e) {}
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-rose-600 underline font-semibold cursor-pointer"
+                    title="Revoke camera permission"
+                  >
+                    Revoke
+                  </button>
+                </div>
               </div>
 
               {/* Video container */}
@@ -568,7 +632,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 {/* HUD Overlay Badge */}
                 <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg text-[9px] font-mono text-cyan-300 flex items-center gap-1.5 border border-white/10">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>DELL G15 • {cameraMode === 'stream' ? 'LIVE MJPEG' : 'AUTO-POLL HD'}</span>
+                  <span>{(currentDev?.device_name || 'LAPTOP SENTINEL').toUpperCase()} • {cameraMode === 'stream' ? 'LIVE MJPEG' : 'AUTO-POLL HD'}</span>
                 </div>
 
                 {/* Stream Reconnect Button */}

@@ -32,7 +32,7 @@ export const EvidenceView: React.FC = () => {
       setEvidenceList([
         {
           id: 'evi_alarm_snapshot_01',
-          device_id: selectedDevice?.id || 'dev_oska_xps15',
+          device_id: selectedDevice?.id || 'dev_sentinel_01',
           file_type: 'SNAPSHOT',
           file_name: 'snapshot_alarm_20260921.jpg',
           file_path: 'evidence/snapshot_alarm_20260921.jpg',

@@ -201,7 +201,7 @@ export const LiveCameraView: React.FC = () => {
 
             {/* Timestamp Watermark Overlay */}
             <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono text-cyan-300">
-              LAPTOPGUARD AI • LIVE PHYSICAL WEBCAM • DELL G15
+              LAPTOPGUARD AI • LIVE PHYSICAL WEBCAM • {selectedDevice?.device_name?.toUpperCase() || 'HARDWARE SENTINEL'}
             </div>
 
             {/* Status Indicator in Video */}

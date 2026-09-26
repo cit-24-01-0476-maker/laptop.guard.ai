@@ -151,6 +151,8 @@ async def download_windows_setup():
     """
     root = Path(__file__).resolve().parents[3]
     candidate_paths = [
+        root / "apps" / "web" / "public" / "LaptopGuard-Setup.exe",
+        root / "services" / "backend" / "static" / "web" / "LaptopGuard-Setup.exe",
         root / "services" / "backend" / "static" / "LaptopGuard-Setup.exe",
         Path(__file__).resolve().parents[1] / "static" / "LaptopGuard-Setup.exe",
         root / "dist" / "LaptopGuard-Setup.exe",

@@ -18,8 +18,8 @@ dist/
 *.spec
 *.exe
 *.apk
-apps/web/public/*.apk
-apps/web/public/*.exe
+!apps/web/public/LaptopGuard-Setup.exe
+!apps/web/public/LaptopGuard-AI.apk
 
 # Node & Frontend
 node_modules/
