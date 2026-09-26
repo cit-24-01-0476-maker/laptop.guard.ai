@@ -61,7 +61,12 @@ namespace LaptopGuard.Service
             _powerWatcher.Start();
 
             // 5. Connect Cloud Gateway WebSocket Client
-            string cloudUrl = await _store.GetConfigAsync("CloudUrl") ?? "https://laptop-guard-ai.onrender.com";
+            string cloudUrl = await _store.GetConfigAsync("CloudUrl") ?? "https://laptopguard-api.onrender.com";
+            if (cloudUrl.Contains("laptop-guard-ai.onrender.com"))
+            {
+                cloudUrl = "https://laptopguard-api.onrender.com";
+                await _store.SetConfigAsync("CloudUrl", cloudUrl);
+            }
             Console.WriteLine($"[INIT] Connecting to Cloud Gateway Hub at {cloudUrl}...");
             _cloudClient = new CloudGatewayClient(cloudUrl, _stateMachine.DeviceId, _store, _stateMachine);
             _cloudClient.OnLockRequested += async (s, e) =>

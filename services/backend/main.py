@@ -114,6 +114,30 @@ def on_startup():
             db.add(device)
             db.commit()
             logger.info("Initialized default device: dev_oska_xps15")
+
+        oshadha_dev = db.query(models.Device).filter(models.Device.id == "dev_oshadhaperera_925a94").first()
+        if not oshadha_dev:
+            oshadha_dev = models.Device(
+                id="dev_oshadhaperera_925a94",
+                user_id=user.id,
+                device_name="OSHADHAPERERA",
+                device_type="laptop",
+                manufacturer="Windows PC",
+                model="Laptop Sentinel",
+                os="Windows",
+                os_version="11 Home",
+                agent_version="2.0.0",
+                device_public_key="ed25519_pk_oshadha",
+                is_paired=True,
+                status="Protected",
+                security_mode="Balanced",
+                battery=100,
+                is_charging=True,
+                last_seen=models.datetime.datetime.utcnow()
+            )
+            db.add(oshadha_dev)
+            db.commit()
+            logger.info("Initialized hardware device: dev_oshadhaperera_925a94")
     except Exception as e:
         logger.error(f"Startup seed error: {e}")
 

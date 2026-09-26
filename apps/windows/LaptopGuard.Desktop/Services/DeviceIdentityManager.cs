@@ -10,7 +10,7 @@ namespace LaptopGuard.Desktop.Services
     {
         public string DeviceId { get; set; } = string.Empty;
         public string DeviceName { get; set; } = string.Empty;
-        public string CloudUrl { get; set; } = "https://laptop-guard-ai.onrender.com";
+        public string CloudUrl { get; set; } = "https://laptopguard-api.onrender.com";
         public string MasterPinSalt { get; set; } = string.Empty;
         public string MasterPinHash { get; set; } = string.Empty;
     }
@@ -79,9 +79,9 @@ namespace LaptopGuard.Desktop.Services
                 await _store.SetConfigAsync("MasterPinHash", hash);
             }
 
-            if (string.IsNullOrEmpty(cloudUrl))
+            if (string.IsNullOrEmpty(cloudUrl) || cloudUrl.Contains("laptop-guard-ai.onrender.com"))
             {
-                cloudUrl = "https://laptop-guard-ai.onrender.com";
+                cloudUrl = "https://laptopguard-api.onrender.com";
                 await _store.SetConfigAsync("CloudUrl", cloudUrl);
             }
 
