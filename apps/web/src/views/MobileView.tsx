@@ -221,12 +221,11 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
   return (
     <div 
-      className="min-h-screen bg-[#F0F4FA] text-slate-800 flex flex-col items-center justify-between relative select-none font-sans overflow-x-hidden"
+      className="min-h-screen bg-[#F0F4FA] text-slate-800 flex flex-col items-center relative select-none font-sans overflow-x-hidden"
       style={{
-        paddingTop: 'max(52px, env(safe-area-inset-top, 52px))',
-        paddingBottom: 'max(140px, calc(110px + env(safe-area-inset-bottom, 24px)))',
-        paddingLeft: 'max(10px, env(safe-area-inset-left, 10px))',
-        paddingRight: 'max(10px, env(safe-area-inset-right, 10px))'
+        paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
+        paddingLeft: 'max(8px, env(safe-area-inset-left, 8px))',
+        paddingRight: 'max(8px, env(safe-area-inset-right, 8px))'
       }}
     >
       
@@ -238,22 +237,22 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       </div>
 
       {/* 1. Mobile Top Frosted Glass Status Header */}
-      <header className="w-full max-w-md sticky top-0 z-40 px-3">
-        <div className="ios-jelly-card px-4 py-2.5 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2">
+      <header className="w-full max-w-md sticky top-0 z-40 px-2 sm:px-3 pt-1 pb-1">
+        <div className="ios-jelly-card px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shadow-sm">
+          <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
             <BrandLogo size="sm" subtitle={false} />
-            <div className="flex items-center gap-1 text-[9px] text-slate-500 font-medium pl-1">
-              <span className={`w-1.5 h-1.5 rounded-full ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+            <div className="flex items-center gap-1 text-[9px] text-slate-500 font-medium pl-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
               <span className="hidden xs:inline">{isWsConnected ? 'Live' : 'Sync'}</span>
             </div>
           </div>
 
-          {/* Quick controls */}
-          <div className="flex items-center gap-1.5">
+          {/* Quick controls - perfectly fitted and never clipped */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             {onOpenIntro && (
               <button
                 onClick={onOpenIntro}
-                className="ios-bubble-btn p-2 rounded-xl bg-cyan-50/80 hover:bg-cyan-100 text-cyan-700 border border-cyan-200/80 shadow-xs cursor-pointer"
+                className="ios-bubble-btn p-1.5 sm:p-2 rounded-xl bg-cyan-50/80 hover:bg-cyan-100 text-cyan-700 border border-cyan-200/80 shadow-xs cursor-pointer"
                 title="Play Cyber Intro"
               >
                 <Play className="w-3.5 h-3.5 fill-cyan-600 text-cyan-600" />
@@ -261,15 +260,15 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
             )}
             <button
               onClick={() => setIsQrScannerOpen(true)}
-              className="ios-bubble-btn py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+              className="ios-bubble-btn py-1.5 px-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer flex-shrink-0"
               title="Scan Laptop Screen QR Code to Bond"
             >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>{currentDev ? 'Bonded QR' : 'Pair QR'}</span>
+              <QrCode className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{currentDev ? 'QR Bond' : 'Pair'}</span>
             </button>
             <button
               onClick={() => refreshAll()}
-              className="ios-bubble-btn p-2 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200/80 shadow-xs cursor-pointer"
+              className="ios-bubble-btn p-1.5 sm:p-2 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200/80 shadow-xs cursor-pointer flex-shrink-0"
               title="Refresh Telemetry"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -277,7 +276,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
             {onLockMasterAccess && (
               <button
                 onClick={onLockMasterAccess}
-                className="ios-bubble-btn p-2 rounded-xl bg-rose-50/80 hover:bg-rose-100 text-rose-600 border border-rose-200/80 shadow-xs cursor-pointer"
+                className="ios-bubble-btn p-1.5 sm:p-2 rounded-xl bg-rose-50/80 hover:bg-rose-100 text-rose-600 border border-rose-200/80 shadow-xs cursor-pointer flex-shrink-0"
                 title="Lock Master Access (PIN Required)"
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -286,15 +285,16 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
             {!Capacitor.isNativePlatform() && (
               <button
                 onClick={onOpenDashboard}
-                className="ios-bubble-btn py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                className="ios-bubble-btn py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold hidden xs:flex items-center gap-1 shadow-xs cursor-pointer flex-shrink-0"
+                title="Switch to PC Dashboard View"
               >
-                <span>PC View</span>
+                <span>PC</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Update notification toast (only when user manually checks in Profile tab) */}
+        {/* Update notification toast */}
         {updateMessage && (
           <div
             onClick={() => setUpdateMessage(null)}
@@ -305,8 +305,8 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         )}
       </header>
 
-      {/* 2. Main Tab Body */}
-      <main className="w-full max-w-md px-3 pt-3 flex-1 flex flex-col gap-3.5 z-10">
+      {/* 2. Main Tab Body with guaranteed clearance above bottom nav */}
+      <main className="w-full max-w-md px-2 sm:px-3 pt-2 pb-28 sm:pb-32 flex-1 flex flex-col gap-3.5 z-10 min-w-0">
 
         {/* ======================================================== */}
         {/* TAB 1: HOME / DASHBOARD                                 */}
@@ -359,92 +359,96 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
             ) : (
               <>
                 {/* Live Laptop Device Card */}
-                <div className="ios-jelly-card p-4 rounded-3xl shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="bubble-icon w-9 h-9 bubble-blue shadow-xs">
+                <div className="ios-jelly-card p-3.5 sm:p-4 rounded-3xl shadow-sm min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+                      <div className="bubble-icon w-9 h-9 bubble-blue shadow-xs flex-shrink-0">
                         <Laptop className="w-4 h-4 text-blue-600" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-900">{currentDev.device_name}</h4>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={currentDev.device_name}>
+                            {currentDev.device_name}
+                          </h4>
                           <button
                             onClick={() => setIsQrScannerOpen(true)}
-                            className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                            className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer flex-shrink-0"
                             title="Scan another laptop QR code"
                           >
                             <QrCode className="w-3 h-3" />
                             <span>Switch</span>
                           </button>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">Sentinel ID: {currentDev.id}</span>
+                        <span className="text-[10px] text-slate-400 font-mono truncate block" title={currentDev.id}>
+                          ID: {currentDev.id}
+                        </span>
                       </div>
                     </div>
-                    <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1.5 border shadow-xs ${
+                    <div className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1.5 border shadow-xs flex-shrink-0 ${
                       isArmed ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${isArmed ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isArmed ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
                       <span>{currentDev.status}</span>
                     </div>
                   </div>
 
                   {/* Hardware Telemetry Bar */}
-                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-white/70 border border-slate-200/80 text-xs shadow-xs">
-                    <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-white/70 border border-slate-200/80 text-xs shadow-xs min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       {currentDev.is_charging ? (
                         <BatteryCharging className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       ) : (
                         <Battery className="w-4 h-4 text-amber-500 flex-shrink-0" />
                       )}
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">Battery</span>
-                        <span className="font-bold text-slate-800">{currentDev.battery}%</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] text-slate-400 block font-medium">Battery</span>
+                        <span className="font-bold text-slate-800 text-[11px] truncate block">{currentDev.battery}%</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Zap className={`w-4 h-4 flex-shrink-0 ${currentDev.is_charging ? 'text-amber-500 animate-pulse' : 'text-rose-500'}`} />
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-medium">AC Power</span>
-                        <span className={`font-bold ${currentDev.is_charging ? 'text-emerald-700' : 'text-rose-600'}`}>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] text-slate-400 block font-medium">AC Power</span>
+                        <span className={`font-bold text-[11px] truncate block ${currentDev.is_charging ? 'text-emerald-700' : 'text-rose-600'}`}>
                           {currentDev.is_charging ? 'Plugged In' : 'Unplugged!'}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100 min-w-0">
                       <Wifi className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                      <div className="truncate">
-                        <span className="text-[10px] text-slate-400 block font-medium">Wi-Fi Network</span>
-                        <span className="font-bold text-slate-800 truncate block text-[11px]" title={currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}>
-                          {currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] text-slate-400 block font-medium">Wi-Fi</span>
+                        <span className="font-bold text-slate-800 truncate block text-[11px]" title={currentDev.current_ssid || currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}>
+                          {currentDev.current_ssid || currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100 min-w-0">
                       <Globe className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                      <div className="truncate">
-                        <span className="text-[10px] text-slate-400 block font-medium">Laptop IP</span>
-                        <span className="font-bold text-slate-800 font-mono text-[11px] truncate block">
-                          {currentDev.metadata?.ip_address || '192.168.1.12'}
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] text-slate-400 block font-medium">Laptop IP</span>
+                        <span className="font-bold text-slate-800 font-mono text-[11px] truncate block" title={currentDev.ip_address || currentDev.metadata?.ip_address || '192.168.1.12'}>
+                          {currentDev.ip_address || currentDev.metadata?.ip_address || '192.168.1.12'}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Live Proximity Banner */}
-                  <div className="mt-2 p-2.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/70 flex items-center justify-between shadow-xs">
-                    <div className="flex items-center gap-2">
+                  <div className="mt-2 p-2 sm:p-2.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/70 flex items-center justify-between gap-2 shadow-xs min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <Navigation className="w-3.5 h-3.5 text-blue-600 animate-pulse flex-shrink-0" />
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <span className="text-[9px] text-slate-500 font-medium block">Phone Proximity to Laptop</span>
-                        <span className="text-[11px] font-bold text-blue-900">{distanceInfo}</span>
+                        <span className="text-[11px] font-bold text-blue-900 truncate block">{distanceInfo}</span>
                       </div>
                     </div>
                     <button
                       onClick={() => setActiveTab('map')}
-                      className="px-2.5 py-1 rounded-xl bg-blue-600 text-white text-[10px] font-bold shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-xl bg-blue-600 text-white text-[10px] font-bold shadow-xs hover:bg-blue-700 transition-colors cursor-pointer flex-shrink-0"
                     >
                       Track
                     </button>
@@ -505,7 +509,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </div>
 
                 {/* Quick Action Control Grid */}
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-2 sm:gap-2.5 min-w-0">
                   {/* 1. Deterrence Siren */}
                   <button
                     onClick={() => {
@@ -515,19 +519,19 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                         soundAlarm(currentDev.id);
                       }
                     }}
-                    className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer ${
+                    className={`p-3 sm:p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer min-w-0 ${
                       isAlarmActive
                         ? 'bg-rose-600 text-white border-rose-700 shadow-rose-500/30 animate-pulse'
                         : 'bg-white/80 hover:bg-rose-50/60 border-rose-200/90 text-rose-700'
                     }`}
                   >
-                    <div className="bubble-icon w-8 h-8 bubble-rose shadow-xs">
+                    <div className="bubble-icon w-8 h-8 bubble-rose shadow-xs flex-shrink-0">
                       {isAlarmActive ? <VolumeX className="w-4 h-4 text-rose-600" /> : <Volume2 className="w-4 h-4 text-rose-600" />}
                     </div>
-                    <span className="text-xs font-black">
-                      {isAlarmActive ? `Stop Siren (${sirenCountdown ?? 15}s)` : 'Sound Siren'}
+                    <span className="text-xs font-black truncate w-full text-center px-1">
+                      {isAlarmActive ? `Stop (${sirenCountdown ?? 15}s)` : 'Sound Siren'}
                     </span>
-                    <span className="text-[9px] opacity-75 font-medium">15s Auto-Mute</span>
+                    <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">15s Auto-Mute</span>
                   </button>
 
                   {/* 2. Lock Workstation */}
@@ -537,37 +541,37 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                         lockDevice(currentDev.id);
                       }
                     }}
-                    className="p-3.5 rounded-2xl bg-white/80 hover:bg-indigo-50/60 border border-indigo-200/90 text-indigo-700 flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-white/80 hover:bg-indigo-50/60 border border-indigo-200/90 text-indigo-700 flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer min-w-0"
                   >
-                    <div className="bubble-icon w-8 h-8 bubble-blue shadow-xs">
+                    <div className="bubble-icon w-8 h-8 bubble-blue shadow-xs flex-shrink-0">
                       <Lock className="w-4 h-4 text-indigo-600" />
                     </div>
-                    <span className="text-xs font-black">Lock PC</span>
-                    <span className="text-[9px] opacity-75 font-medium">Instant Win32 Lock</span>
+                    <span className="text-xs font-black truncate w-full text-center px-1">Lock PC</span>
+                    <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">Win32 Lock</span>
                   </button>
 
                   {/* 3. Open Camera Feed */}
                   <button
                     onClick={() => setActiveTab('camera')}
-                    className="p-3.5 rounded-2xl bg-white/80 hover:bg-cyan-50/60 border border-cyan-200/90 text-cyan-800 flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-white/80 hover:bg-cyan-50/60 border border-cyan-200/90 text-cyan-800 flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer min-w-0"
                   >
-                    <div className="bubble-icon w-8 h-8 bubble-cyan shadow-xs">
+                    <div className="bubble-icon w-8 h-8 bubble-cyan shadow-xs flex-shrink-0">
                       <Camera className="w-4 h-4 text-cyan-600" />
                     </div>
-                    <span className="text-xs font-black">Live Webcam</span>
-                    <span className="text-[9px] opacity-75 font-medium">Hardware Stream</span>
+                    <span className="text-xs font-black truncate w-full text-center px-1">Live Webcam</span>
+                    <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">Hardware Stream</span>
                   </button>
 
                   {/* 4. Lost Mode */}
                   <button
                     onClick={() => setIsLostModalOpen(true)}
-                    className="p-3.5 rounded-2xl bg-white/80 hover:bg-amber-50/60 border border-amber-200/90 text-amber-800 flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-white/80 hover:bg-amber-50/60 border border-amber-200/90 text-amber-800 flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer min-w-0"
                   >
-                    <div className="bubble-icon w-8 h-8 bubble-amber shadow-xs">
+                    <div className="bubble-icon w-8 h-8 bubble-amber shadow-xs flex-shrink-0">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
                     </div>
-                    <span className="text-xs font-black">Lost Mode</span>
-                    <span className="text-[9px] opacity-75 font-medium">High-Priority Alert</span>
+                    <span className="text-xs font-black truncate w-full text-center px-1">Lost Mode</span>
+                    <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">High-Priority Alert</span>
                   </button>
                 </div>
               </>
@@ -663,14 +667,16 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   }}
                 />
 
-                {/* HUD Overlay Badge */}
-                <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-mono text-cyan-300 flex items-center gap-1.5 border border-white/10 shadow-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{(currentDev?.device_name || 'LAPTOP SENTINEL').toUpperCase()} • LIVE FEED</span>
-                </div>
+                {/* Responsive HUD Overlay Header */}
+                <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1.5 pointer-events-none">
+                  <div className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-mono text-cyan-300 flex items-center gap-1 border border-white/10 shadow-sm min-w-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                    <span className="truncate">{(currentDev?.device_name || 'LAPTOP SENTINEL').toUpperCase()} • LIVE</span>
+                  </div>
 
-                <div className="absolute top-2 right-2 bg-black/75 backdrop-blur-md px-2 py-1 rounded-lg text-[9px] font-mono text-emerald-300 flex items-center gap-1 border border-white/10 shadow-sm">
-                  <span>800ms CLOUD SYNC</span>
+                  <div className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-mono text-emerald-300 border border-white/10 shadow-sm flex-shrink-0">
+                    800ms LIVE
+                  </div>
                 </div>
 
                 {/* Stream Reconnect / Refresh Button */}
@@ -718,13 +724,16 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               </div>
 
               {/* Hardware Device Telemetry Strip */}
-              <div className="mt-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-[11px] text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <Wifi className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="font-semibold text-slate-800">{currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}</span>
+              <div className="mt-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-2 text-[11px] text-slate-600 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <Wifi className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                  <span className="font-semibold text-slate-800 truncate" title={currentDev.current_ssid || currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}>
+                    {currentDev.current_ssid || currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                  <span>IP: {currentDev.metadata?.ip_address || '192.168.1.12'}</span>
+                <div className="flex items-center gap-1 font-mono text-[10px] flex-shrink-0">
+                  <Globe className="w-3 h-3 text-indigo-500" />
+                  <span>{currentDev.ip_address || currentDev.metadata?.ip_address || '192.168.1.12'}</span>
                 </div>
               </div>
             </div>
@@ -798,45 +807,45 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               </div>
 
               {/* Real Telemetry Details Card */}
-              <div className="mt-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+              <div className="mt-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs min-w-0">
                 {/* Distance relative to phone */}
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
-                  <div className="flex items-center gap-1.5 text-slate-600">
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200/70 min-w-0">
+                  <div className="flex items-center gap-1.5 text-slate-600 flex-shrink-0">
                     <Navigation className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-                    <span className="font-medium">Proximity from Phone:</span>
+                    <span className="font-medium text-[11px]">Proximity:</span>
                   </div>
-                  <span className="font-bold text-blue-800 text-[11px]">{distanceInfo}</span>
+                  <span className="font-bold text-blue-800 text-[11px] truncate text-right">{distanceInfo}</span>
                 </div>
 
                 {/* Connected Wi-Fi */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-600">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 text-slate-600 flex-shrink-0">
                     <Wifi className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="font-medium">Connected Wi-Fi:</span>
+                    <span className="font-medium text-[11px]">Connected Wi-Fi:</span>
                   </div>
-                  <span className="font-bold text-slate-800 text-[11px] truncate max-w-[150px]">
-                    {currentDev?.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}
+                  <span className="font-bold text-slate-800 text-[11px] truncate text-right" title={currentDev?.current_ssid || currentDev?.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}>
+                    {currentDev?.current_ssid || currentDev?.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}
                   </span>
                 </div>
 
                 {/* Local IP Address */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-600">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 text-slate-600 flex-shrink-0">
                     <Globe className="w-3.5 h-3.5 text-indigo-600" />
-                    <span className="font-medium">Device Local IP:</span>
+                    <span className="font-medium text-[11px]">Device Local IP:</span>
                   </div>
-                  <span className="font-bold font-mono text-slate-800 text-[11px]">
-                    {currentDev?.metadata?.ip_address || '192.168.1.12'}
+                  <span className="font-bold font-mono text-slate-800 text-[11px] text-right">
+                    {currentDev?.ip_address || currentDev?.metadata?.ip_address || '192.168.1.12'}
                   </span>
                 </div>
 
                 {/* GPS Coordinates */}
-                <div className="flex items-center justify-between pt-1 border-t border-slate-200/70">
-                  <div className="flex items-center gap-1.5 text-slate-600">
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/70 min-w-0">
+                  <div className="flex items-center gap-1.5 text-slate-600 flex-shrink-0">
                     <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="font-medium">Coordinates:</span>
+                    <span className="font-medium text-[11px]">Coordinates:</span>
                   </div>
-                  <span className="font-mono text-[10px] text-slate-700">
+                  <span className="font-mono text-[10px] text-slate-700 text-right">
                     {(currentDev?.last_location?.latitude || 6.9271).toFixed(4)}° N, {(currentDev?.last_location?.longitude || 79.8612).toFixed(4)}° E
                   </span>
                 </div>
@@ -1001,71 +1010,70 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
       {/* 3. Floating iOS Jelly Glass Bottom Navigation Bar */}
       <nav 
-        className="fixed left-3 right-3 max-w-md mx-auto ios-frosted-nav rounded-[30px] px-2.5 py-2 z-40 flex items-center justify-around shadow-2xl transition-all"
-        style={{ bottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}
+        className="fixed left-2 sm:left-3 right-2 sm:right-3 max-w-md mx-auto ios-frosted-nav rounded-[28px] px-1.5 sm:px-2 py-1.5 z-40 flex items-center justify-between shadow-2xl transition-all"
+        style={{ bottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}
       >
-        
         <button
           onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
             activeTab === 'home'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 font-bold'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
           }`}
         >
           <Shield className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[9px]">Home</span>
+          <span className="text-[10px] tracking-tight">Home</span>
         </button>
 
         <button
           onClick={() => setActiveTab('camera')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
             activeTab === 'camera'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 font-bold'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
           }`}
         >
           <Camera className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[9px]">Camera</span>
+          <span className="text-[10px] tracking-tight">Camera</span>
         </button>
 
         <button
           onClick={() => setActiveTab('map')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
             activeTab === 'map'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 font-bold'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
           }`}
         >
           <MapPin className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[9px]">Radar</span>
+          <span className="text-[10px] tracking-tight">Location</span>
         </button>
 
         <button
           onClick={() => setActiveTab('alerts')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-2xl transition-all cursor-pointer relative ${
+          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer relative ${
             activeTab === 'alerts'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 font-bold'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
           }`}
         >
           <Bell className="w-4 h-4 stroke-[2.2]" />
           {events.length > 0 && (
-            <span className="absolute top-1 right-2.5 w-2 h-2 rounded-full bg-rose-500" />
+            <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
           )}
-          <span className="text-[9px]">Alerts</span>
+          <span className="text-[10px] tracking-tight">Alerts</span>
         </button>
 
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
             activeTab === 'profile'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 font-bold'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
           }`}
         >
           <User className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[9px]">Profile</span>
+          <span className="text-[10px] tracking-tight">Profile</span>
         </button>
 
       </nav>
