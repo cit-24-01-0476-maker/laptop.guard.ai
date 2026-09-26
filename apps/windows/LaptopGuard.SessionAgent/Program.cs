@@ -8,12 +8,14 @@ using LaptopGuard.Core.Ipc;
 using LaptopGuard.Core.Models;
 using LaptopGuard.Core.Native;
 using LaptopGuard.SessionAgent.Audio;
+using LaptopGuard.SessionAgent.Camera;
 
 namespace LaptopGuard.SessionAgent
 {
     public class Program
     {
         private static readonly AlarmSirenPlayer SirenPlayer = new();
+        private static readonly CameraManager CamManager = new();
         private static NamedPipeIpcClient? _ipcClient;
 
         public static async Task Main(string[] args)
@@ -67,8 +69,9 @@ namespace LaptopGuard.SessionAgent
             finally
             {
                 SystemEvents.SessionSwitch -= OnSessionSwitch;
+                CamManager.Dispose();
                 SirenPlayer.Dispose();
-                _ipcClient.Dispose();
+                _ipcClient?.Dispose();
             }
         }
 
@@ -121,6 +124,16 @@ namespace LaptopGuard.SessionAgent
             // 2. Immediately Sound Alarm Siren
             SirenPlayer.PlaySiren();
 
+            // 3. Immediately Capture and Vault Camera Snapshot
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await CamManager.CaptureAndVaultSnapshotAsync("dev_windows_sentinel", "INCIDENT_TRIGGER");
+                }
+                catch { }
+            });
+
             sw.Stop();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [PERF] Total SessionAgent response time: {sw.ElapsedMilliseconds}ms");
@@ -146,6 +159,11 @@ namespace LaptopGuard.SessionAgent
                 case IpcCommandType.DisarmDevice:
                     Console.WriteLine("[ACTION] Stopping emergency siren...");
                     SirenPlayer.StopSiren();
+                    break;
+
+                case IpcCommandType.TakeSnapshot:
+                    Console.WriteLine("[ACTION] Taking security snapshot on remote request...");
+                    _ = CamManager.CaptureAndVaultSnapshotAsync("dev_windows_sentinel", "REMOTE_COMMAND");
                     break;
             }
         }

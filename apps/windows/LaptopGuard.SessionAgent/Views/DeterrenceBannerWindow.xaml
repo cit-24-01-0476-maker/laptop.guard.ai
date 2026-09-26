@@ -1,0 +1,83 @@
+<Window x:Class="LaptopGuard.SessionAgent.Views.DeterrenceBannerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LaptopGuard Camera Banner"
+        Height="64"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Background="Transparent"
+        WindowStartupLocation="Manual"
+        Top="0" Left="0">
+
+    <Border Background="#DC2626" 
+            BorderBrush="#FEE2E2" 
+            BorderThickness="0,0,0,2">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Color="#7F1D1D" Opacity="0.8"/>
+        </Border.Effect>
+
+        <Grid Margin="24,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Warning Icon & Title -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="🔴" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <TextBlock Text="LAPTOPGUARD AI • LIVE CAMERA ACTIVE" 
+                           Foreground="#FFFFFF" 
+                           FontSize="15" 
+                           FontWeight="Black" 
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Privacy Notice -->
+            <TextBlock Grid.Column="1" 
+                       Text="Authorized owner is viewing real-time security stream. Non-covert compliance strictly enforced." 
+                       Foreground="#FEE2E2" 
+                       FontSize="12" 
+                       FontWeight="SemiBold" 
+                       Margin="24,0,0,0"
+                       VerticalAlignment="Center"/>
+
+            <!-- Timer Countdown -->
+            <Border Grid.Column="2" 
+                    Background="#7F1D1D" 
+                    CornerRadius="6" 
+                    Padding="12,4" 
+                    Margin="0,0,16,0" 
+                    VerticalAlignment="Center">
+                <TextBlock x:Name="TimerText" 
+                           Text="Auto-Cutoff: 300s" 
+                           Foreground="#FEF08A" 
+                           FontSize="12" 
+                           FontWeight="Bold"/>
+            </Border>
+
+            <!-- Terminate Button -->
+            <Button Grid.Column="3" 
+                    Content="Terminate Stream" 
+                    Click="Terminate_Click"
+                    Height="34" 
+                    Padding="14,0" 
+                    Background="#1E293B" 
+                    Foreground="#FFFFFF" 
+                    BorderBrush="#334155" 
+                    BorderThickness="1" 
+                    FontWeight="Bold" 
+                    FontSize="12" 
+                    Cursor="Hand"
+                    VerticalAlignment="Center">
+                <Button.Resources>
+                    <Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style>
+                </Button.Resources>
+            </Button>
+        </Grid>
+    </Border>
+</Window>
