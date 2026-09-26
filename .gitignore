@@ -20,6 +20,12 @@ dist/
 *.apk
 !apps/web/public/LaptopGuard-Setup.exe
 !apps/web/public/LaptopGuard-AI.apk
+!services/backend/static/LaptopGuard-Setup.exe
+!services/backend/static/LaptopGuard-AI.apk
+!services/backend/static/web/LaptopGuard-Setup.exe
+!services/backend/static/web/LaptopGuard-AI.apk
+!dist/LaptopGuard-Setup.exe
+!dist/LaptopGuard-AI.apk
 
 # Node & Frontend
 node_modules/
@@ -59,8 +65,7 @@ Thumbs.db
 apps/web/android/.gradle/
 apps/web/android/app/build/
 apps/web/android/build/
-*.apk
-!apps/web/public/LaptopGuard-AI.apk
+# *.apk handled above
 *.aab
 scratch/
 

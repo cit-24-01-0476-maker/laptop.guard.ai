@@ -10,6 +10,18 @@ namespace LaptopGuard.Desktop;
 /// </summary>
 public partial class App : System.Windows.Application
 {
+    public App()
+    {
+        DispatcherUnhandledException += (s, e) =>
+        {
+            try { File.AppendAllText(@"C:\ProgramData\LaptopGuard\crash.txt", $"[{DateTime.UtcNow}] [Dispatcher] {e.Exception}\n"); } catch { }
+        };
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            try { File.AppendAllText(@"C:\ProgramData\LaptopGuard\crash.txt", $"[{DateTime.UtcNow}] [AppDomain] {e.ExceptionObject}\n"); } catch { }
+        };
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
