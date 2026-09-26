@@ -340,30 +340,37 @@ html.dark .glass-panel {
 /* =========================================================
    QR Scanner Viewport & Video Stream Styling for Mobile
    ========================================================= */
-#qr-reader-container {
+#qr-reader-viewport {
   width: 100% !important;
   height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
   position: relative !important;
   overflow: hidden !important;
-  border-radius: 1.5rem !important;
   background-color: #000 !important;
 }
 
-#qr-reader-container video {
+#qr-reader-viewport video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  border-radius: 1.5rem !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
-#qr-reader-container img {
+/* Hide the shaded overlay regions but keep the scan region visible */
+#qr-reader-viewport > div:first-child {
+  border: none !important;
+}
+
+/* Hide the built-in "Powered by" branding text */
+#qr-reader-viewport a,
+#qr-reader-viewport span[style*="color"] {
   display: none !important;
 }
 
-#qr-reader-container div {
-  border: none !important;
+/* Hide the default scan region box border (we draw our own overlay) */
+#qr-reader-viewport #qr-shaded-region {
+  border-color: transparent !important;
 }
+
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import { QrCode, X, CheckCircle2, AlertTriangle, Camera, Laptop, RefreshCw, KeyRound, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
+import { QrCode, X, CheckCircle2, AlertTriangle, Camera, Laptop, KeyRound } from 'lucide-react';
 import { useSecurity } from '../../context/SecurityContext';
 import { api } from '../../services/api';
 
@@ -19,102 +19,131 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
   const [successDevice, setSuccessDevice] = useState<any | null>(null);
   const [scannerStatus, setScannerStatus] = useState<string>('Initializing camera...');
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const mountedRef = useRef(true);
+  const scanningRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
       stopScanner();
       setErrorMsg(null);
       setSuccessDevice(null);
+      scanningRef.current = false;
       return;
     }
 
     if (activeMode === 'scan') {
-      startScanner();
+      // Delay to let DOM element mount
+      const timer = setTimeout(() => {
+        if (mountedRef.current) startScanner();
+      }, 300);
+      return () => {
+        clearTimeout(timer);
+        stopScanner();
+      };
     } else {
       stopScanner();
     }
-
-    return () => {
-      stopScanner();
-    };
   }, [isOpen, activeMode]);
 
   const startScanner = async () => {
+    if (scanningRef.current) return;
+    scanningRef.current = true;
     setErrorMsg(null);
-    setScannerStatus('Requesting camera sensor access...');
+    setScannerStatus('Requesting camera access...');
+
     try {
+      // Clean up any previous instance
       if (scannerRef.current) {
-        await stopScanner();
+        try {
+          const state = scannerRef.current.getState();
+          if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+            await scannerRef.current.stop();
+          }
+          scannerRef.current.clear();
+        } catch {}
+        scannerRef.current = null;
       }
 
-      // Small delay to ensure container element is mounted in DOM
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      const containerEl = document.getElementById('qr-reader-viewport');
+      if (!containerEl) {
+        scanningRef.current = false;
+        return;
+      }
+      // Clear any leftover children from previous scanner
+      containerEl.innerHTML = '';
 
-      const html5QrCode = new Html5Qrcode('qr-reader-container');
+      const html5QrCode = new Html5Qrcode('qr-reader-viewport', /* verbose */ false);
       scannerRef.current = html5QrCode;
 
-      const config = {
-        fps: 15,
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const minDim = Math.min(viewfinderWidth, viewfinderHeight);
-          const boxSize = Math.max(180, Math.floor(minDim * 0.72));
-          return { width: boxSize, height: boxSize };
-        },
-        aspectRatio: 1.0
-      };
-
-      // Try camera enumeration to reliably pick the back camera on Android devices
-      let cameraConfig: any = { facingMode: 'environment' };
+      // Try to find back/rear camera
+      let cameraId: any = { facingMode: 'environment' };
       try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          const rear = devices.find(d => 
-            d.label.toLowerCase().includes('back') || 
-            d.label.toLowerCase().includes('rear') || 
-            d.label.toLowerCase().includes('environment') ||
-            d.label.toLowerCase().includes('0')
-          );
-          cameraConfig = rear ? rear.id : devices[devices.length - 1].id;
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const rear = cameras.find(c => {
+            const lbl = c.label.toLowerCase();
+            return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
+          });
+          if (rear) {
+            cameraId = rear.id;
+          } else {
+            // Use last camera (usually back on multi-camera phones)
+            cameraId = cameras[cameras.length - 1].id;
+          }
         }
-      } catch (camErr) {
-        console.warn('Camera enumeration fallback:', camErr);
+      } catch {
+        // fallback to facingMode constraint
       }
 
       await html5QrCode.start(
-        cameraConfig,
-        config,
+        cameraId,
+        {
+          fps: 12,
+          qrbox: { width: 200, height: 200 },
+        },
         (decodedText) => {
-          handleScannedText(decodedText);
+          if (mountedRef.current) {
+            handleScannedText(decodedText);
+          }
         },
         () => {
-          // Frame scan error / waiting for QR
+          // Scan frame: no QR found yet — this is normal
         }
       );
-      setScannerStatus('Align camera with laptop screen QR code');
-    } catch (err: any) {
-      console.warn('QR camera start failed:', err);
-      const isPermDenied = err?.toString()?.toLowerCase().includes('permission') || 
-                           err?.toString()?.toLowerCase().includes('notallowed') ||
-                           err?.name === 'NotAllowedError';
-      if (isPermDenied) {
-        setErrorMsg('Camera permission denied. Tap "Manual Code" below to enter your laptop ID.');
-      } else {
-        setErrorMsg('Camera feed unavailable. Tap "Manual Code" below to link directly.');
+
+      if (mountedRef.current) {
+        setScannerStatus('Point at the QR code on your laptop screen');
       }
-      setScannerStatus('Camera access unavailable. Use manual code below.');
+    } catch (err: any) {
+      console.warn('QR camera error:', err);
+      scanningRef.current = false;
+      if (!mountedRef.current) return;
+
+      const errStr = String(err).toLowerCase();
+      if (errStr.includes('permission') || errStr.includes('notallowed') || err?.name === 'NotAllowedError') {
+        setErrorMsg('Camera permission denied. Please allow camera access in your phone settings, then try again.');
+      } else {
+        setErrorMsg('Camera not available on this device. Use Manual Code instead.');
+      }
+      setScannerStatus('Camera unavailable — use Manual Code tab');
     }
   };
 
   const stopScanner = async () => {
+    scanningRef.current = false;
     if (scannerRef.current) {
       try {
-        if (scannerRef.current.isScanning) {
+        const state = scannerRef.current.getState();
+        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
           await scannerRef.current.stop();
         }
         scannerRef.current.clear();
-      } catch (e) {
-        // Ignore stop cleanup errors
-      }
+      } catch {}
       scannerRef.current = null;
     }
   };
@@ -129,7 +158,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
       try {
         payload = JSON.parse(text);
       } catch {
-        // Treat as raw device_id string
         payload = { device_id: text.trim() };
       }
 
@@ -138,7 +166,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
         throw new Error('Invalid QR Code: No hardware ID found.');
       }
 
-      // Check email matching if encoded in QR
       if (payload.email && user?.email) {
         if (payload.email.toLowerCase() !== user.email.toLowerCase()) {
           throw new Error(
@@ -164,12 +191,10 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
 
       const bondedDev = res.device || { id: deviceId, device_name: 'Guarded Laptop' };
 
-      // Permanently bond in localStorage
       localStorage.setItem('laptopguard_bonded_device_id', deviceId);
       setSelectedDevice(bondedDev);
       setSuccessDevice(bondedDev);
 
-      // Play pleasant audio chime
       playBondChime();
 
       setTimeout(() => {
@@ -276,12 +301,20 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
             {/* Mode A: Camera Scanner Viewport */}
             {activeMode === 'scan' && (
               <div className="w-full flex flex-col items-center space-y-3">
-                <div className="w-64 h-64 rounded-3xl overflow-hidden bg-black relative flex items-center justify-center border-2 border-dashed border-blue-500/60 shadow-inner">
-                  <div id="qr-reader-container" className="w-full h-full object-cover" />
-                  
-                  {/* Viewfinder Target Overlay */}
-                  <div className="absolute inset-8 border-2 border-cyan-400/80 rounded-2xl pointer-events-none animate-pulse flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                {/* Full-width camera viewport — no constrained width */}
+                <div
+                  style={{ width: '100%', aspectRatio: '1 / 1', maxWidth: '320px' }}
+                  className="rounded-3xl overflow-hidden bg-black relative border-2 border-blue-500/40 shadow-inner"
+                >
+                  <div
+                    id="qr-reader-viewport"
+                    style={{ width: '100%', height: '100%', position: 'relative' }}
+                  />
+                  {/* Viewfinder overlay */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-[55%] h-[55%] border-2 border-cyan-400/70 rounded-2xl animate-pulse flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                    </div>
                   </div>
                 </div>
 

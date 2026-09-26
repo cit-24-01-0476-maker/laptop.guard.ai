@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
-  "build_timestamp": 1790400000,
-  "release_notes": "Android Camera Permissions, Real-time QR Scanner Fix & Seamless Auto-Updater"
+  "version": "1.6.1",
+  "build_timestamp": 1790402700,
+  "release_notes": "Full-screen QR Camera Scanner, Silent Auto-Updater, Real QR Detection"
 }

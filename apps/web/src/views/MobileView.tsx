@@ -132,7 +132,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     return () => clearInterval(pollTimer);
   }, [activeTab, cameraMode, currentDev?.id]);
 
-  // Check Over-The-Air (OTA) Auto-Update
+  // Check Over-The-Air (OTA) Auto-Update — SILENT for auto, shows progress only for manual
   const checkAutoUpdate = async (manual = false) => {
     setIsCheckingUpdate(true);
     try {
@@ -141,25 +141,40 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       if (data.latest_version) {
         if (data.latest_version !== currentVersion) {
           if (Capacitor.isNativePlatform()) {
-            setUpdateMessage(`✨ Update v${data.latest_version} available! Tap to download.`);
+            if (manual) {
+              setUpdateMessage(`⬆️ Updating to v${data.latest_version}...`);
+            }
+            // Capacitor with server.url loads live web — just reload
+            setTimeout(() => {
+              localStorage.setItem('laptopguard_client_version', data.latest_version);
+              setCurrentVersion(data.latest_version);
+              window.location.reload();
+            }, manual ? 800 : 100);
           } else {
+            // Web browser — unregister SW and silent reload
             if ('serviceWorker' in navigator) {
               const regs = await navigator.serviceWorker.getRegistrations();
               for (const reg of regs) {
                 await reg.update();
               }
             }
-            setUpdateMessage(`✨ Updating to v${data.latest_version}...`);
+            if (manual) {
+              setUpdateMessage(`⬆️ Updating to v${data.latest_version}...`);
+            }
+            localStorage.setItem('laptopguard_client_version', data.latest_version);
             setTimeout(() => {
               window.location.reload();
-            }, 1200);
+            }, manual ? 800 : 100);
           }
-        } else if (manual) {
-          setUpdateMessage(`✅ App is up to date (v${data.latest_version}) • Auto-Update Active`);
+        } else {
+          setCurrentVersion(data.latest_version);
+          if (manual) {
+            setUpdateMessage(`✅ App is up to date (v${data.latest_version}) • Auto-Update Active`);
+          }
         }
       }
     } catch (e) {
-      if (manual) setUpdateMessage('App is running the latest live OTA bundle.');
+      if (manual) setUpdateMessage('✅ App is running the latest live OTA bundle.');
     } finally {
       setIsCheckingUpdate(false);
       if (manual) setTimeout(() => setUpdateMessage(null), 4000);
