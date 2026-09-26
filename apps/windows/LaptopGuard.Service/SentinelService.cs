@@ -11,6 +11,8 @@ using LaptopGuard.Core.State;
 using LaptopGuard.Core.Storage;
 using LaptopGuard.Service.Power;
 
+using LaptopGuard.Core.Cloud;
+
 namespace LaptopGuard.Service
 {
     public class SentinelService : IHostedService, IDisposable
@@ -20,9 +22,11 @@ namespace LaptopGuard.Service
         private readonly NamedPipeIpcServer _ipcServer = new();
         private readonly WindowsPowerWatcher _powerWatcher = new();
         private readonly CancellationTokenSource _cts = new();
+        private CloudGatewayClient? _cloudClient;
 
         public SecurityStateMachine StateMachine => _stateMachine;
         public LocalDurableStore Store => _store;
+        public CloudGatewayClient? CloudClient => _cloudClient;
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -55,6 +59,20 @@ namespace LaptopGuard.Service
             Console.WriteLine("[INIT] Registering Windows Power Broadcast Hook (GUID_ACDC_POWER_SOURCE)...");
             _powerWatcher.OnPowerSourceChanged += HandlePowerSourceChanged;
             _powerWatcher.Start();
+
+            // 5. Connect Cloud Gateway WebSocket Client
+            string cloudUrl = await _store.GetConfigAsync("CloudUrl") ?? "https://laptop-guard-ai.onrender.com";
+            Console.WriteLine($"[INIT] Connecting to Cloud Gateway Hub at {cloudUrl}...");
+            _cloudClient = new CloudGatewayClient(cloudUrl, _stateMachine.DeviceId, _store, _stateMachine);
+            _cloudClient.OnLockRequested += async (s, e) =>
+            {
+                await _ipcServer.BroadcastAsync(IpcMessage.CreateCommand(IpcCommandType.LockWorkStation));
+            };
+            _cloudClient.OnAlarmRequested += async (s, activate) =>
+            {
+                await _ipcServer.BroadcastAsync(IpcMessage.CreateCommand(activate ? IpcCommandType.SoundAlarm : IpcCommandType.StopAlarm));
+            };
+            _cloudClient.Start();
 
             var (hasAc, pct) = Win32Native.QueryCurrentPower();
             Console.ForegroundColor = ConsoleColor.Green;
@@ -176,6 +194,7 @@ namespace LaptopGuard.Service
         public void Dispose()
         {
             _cts.Cancel();
+            _cloudClient?.Dispose();
             _powerWatcher.Dispose();
             _ipcServer.Dispose();
             _stateMachine.Dispose();
