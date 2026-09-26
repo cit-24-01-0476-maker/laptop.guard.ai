@@ -1,5 +1,5 @@
 {
-  "version": "1.5.2",
-  "build_timestamp": 1790238000,
-  "release_notes": "Sovereign Master Access PIN Lock (Owner PIN: 6728) across Web & Mobile APK"
+  "version": "1.6.0",
+  "build_timestamp": 1790400000,
+  "release_notes": "Android Camera Permissions, Real-time QR Scanner Fix & Seamless Auto-Updater"
 }

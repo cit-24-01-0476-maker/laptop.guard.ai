@@ -3,6 +3,19 @@
   "outputDirectory": "apps/web/dist",
   "headers": [
     {
+      "source": "/(.*\\.exe)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/octet-stream"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"LaptopGuard-Setup.exe\""
+        }
+      ]
+    },
+    {
       "source": "/(.*\\.apk)",
       "headers": [
         {
@@ -48,6 +61,14 @@
   ],
   "rewrites": [
     {
+      "source": "/downloads/windows-setup",
+      "destination": "/LaptopGuard-Setup.exe"
+    },
+    {
+      "source": "/downloads/windows-exe",
+      "destination": "/LaptopGuard-Setup.exe"
+    },
+    {
       "source": "/downloads/android-apk",
       "destination": "/LaptopGuard-AI.apk"
     },
@@ -58,14 +79,6 @@
     {
       "source": "/downloads/windows-zip",
       "destination": "/LaptopGuard-Windows-Agent-v1.5.2.zip"
-    },
-    {
-      "source": "/downloads/windows-setup",
-      "destination": "https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.exe"
-    },
-    {
-      "source": "/downloads/windows-exe",
-      "destination": "https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.exe"
     },
     {
       "source": "/api/v1/downloads/:match*",

@@ -43,17 +43,45 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
     setErrorMsg(null);
     setScannerStatus('Requesting camera sensor access...');
     try {
+      if (scannerRef.current) {
+        await stopScanner();
+      }
+
+      // Small delay to ensure container element is mounted in DOM
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       const html5QrCode = new Html5Qrcode('qr-reader-container');
       scannerRef.current = html5QrCode;
 
       const config = {
-        fps: 10,
-        qrbox: { width: 220, height: 220 },
+        fps: 15,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+          const boxSize = Math.max(180, Math.floor(minDim * 0.72));
+          return { width: boxSize, height: boxSize };
+        },
         aspectRatio: 1.0
       };
 
+      // Try camera enumeration to reliably pick the back camera on Android devices
+      let cameraConfig: any = { facingMode: 'environment' };
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          const rear = devices.find(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear') || 
+            d.label.toLowerCase().includes('environment') ||
+            d.label.toLowerCase().includes('0')
+          );
+          cameraConfig = rear ? rear.id : devices[devices.length - 1].id;
+        }
+      } catch (camErr) {
+        console.warn('Camera enumeration fallback:', camErr);
+      }
+
       await html5QrCode.start(
-        { facingMode: 'environment' },
+        cameraConfig,
         config,
         (decodedText) => {
           handleScannedText(decodedText);
@@ -65,6 +93,14 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
       setScannerStatus('Align camera with laptop screen QR code');
     } catch (err: any) {
       console.warn('QR camera start failed:', err);
+      const isPermDenied = err?.toString()?.toLowerCase().includes('permission') || 
+                           err?.toString()?.toLowerCase().includes('notallowed') ||
+                           err?.name === 'NotAllowedError';
+      if (isPermDenied) {
+        setErrorMsg('Camera permission denied. Tap "Manual Code" below to enter your laptop ID.');
+      } else {
+        setErrorMsg('Camera feed unavailable. Tap "Manual Code" below to link directly.');
+      }
       setScannerStatus('Camera access unavailable. Use manual code below.');
     }
   };
@@ -252,6 +288,15 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose,
                 <p className="text-[11px] text-slate-500 font-medium text-center">
                   {scannerStatus}
                 </p>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveMode('manual')}
+                  className="text-xs text-blue-600 dark:text-cyan-400 font-bold hover:underline flex items-center gap-1.5 cursor-pointer py-1"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Can't scan? Enter Hardware ID manually</span>
+                </button>
               </div>
             )}
 

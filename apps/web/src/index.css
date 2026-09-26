@@ -336,3 +336,34 @@ html.dark .glass-panel {
 .animate-shake {
   animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
+
+/* =========================================================
+   QR Scanner Viewport & Video Stream Styling for Mobile
+   ========================================================= */
+#qr-reader-container {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 1.5rem !important;
+  background-color: #000 !important;
+}
+
+#qr-reader-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1.5rem !important;
+}
+
+#qr-reader-container img {
+  display: none !important;
+}
+
+#qr-reader-container div {
+  border: none !important;
+}
+

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Sparkles, X } from 'lucide-react';
 
-const CURRENT_CLIENT_VERSION = '1.5.2';
+const CURRENT_CLIENT_VERSION = '1.6.0';
 
 export const AutoUpdateBanner: React.FC = () => {
   const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
