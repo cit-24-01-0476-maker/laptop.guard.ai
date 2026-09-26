@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LaptopGuard.Core\LaptopGuard.Core.csproj" />
+    <ProjectReference Include="..\LaptopGuard.Desktop\LaptopGuard.Desktop.csproj" />
   </ItemGroup>
 
 </Project>

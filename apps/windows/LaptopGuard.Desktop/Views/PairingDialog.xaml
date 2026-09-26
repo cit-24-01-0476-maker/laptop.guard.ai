@@ -1,0 +1,120 @@
+<Window x:Class="LaptopGuard.Desktop.Views.PairingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LaptopGuard Device Pairing"
+        Height="540" Width="460"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Border Background="#0F172A"
+            BorderBrush="#38BDF8"
+            BorderThickness="1.5"
+            CornerRadius="16">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Color="#0284C7" Opacity="0.5"/>
+        </Border.Effect>
+
+        <Grid Margin="28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="DEVICE PAIRING" 
+                           Foreground="#38BDF8" 
+                           FontSize="12" 
+                           FontWeight="Bold" 
+                           />
+                <TextBlock Text="Pair Mobile Remote" 
+                           Foreground="#F8FAFC" 
+                           FontSize="22" 
+                           FontWeight="Bold" 
+                           Margin="0,4,0,4"/>
+                <TextBlock Text="Scan this QR code with the LaptopGuard Mobile App on your phone to connect." 
+                           Foreground="#94A3B8" 
+                           FontSize="13" 
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- QR Code Card -->
+            <Border Grid.Row="2" 
+                    Background="#FFFFFF" 
+                    CornerRadius="12" 
+                    Padding="16" 
+                    Margin="0,16,0,16" 
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Color="#000000" Opacity="0.3"/>
+                </Border.Effect>
+                <Image x:Name="QrImage" Width="220" Height="220" Stretch="Uniform"/>
+            </Border>
+
+            <!-- Info Badges -->
+            <StackPanel Grid.Row="3" Margin="0,0,0,16">
+                <Border Background="#1E293B" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">
+                    <Grid>
+                        <TextBlock Text="Device Name:" Foreground="#64748B" FontSize="11" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="DeviceNameText" Text="Laptop" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                    </Grid>
+                </Border>
+                <Border Background="#1E293B" CornerRadius="8" Padding="12,8">
+                    <Grid>
+                        <TextBlock Text="Device ID:" Foreground="#64748B" FontSize="11" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="DeviceIdText" Text="dev_..." Foreground="#38BDF8" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Actions -->
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" 
+                        Content="Regenerate QR" 
+                        Click="Regenerate_Click"
+                        Height="40"
+                        Background="#1E293B"
+                        Foreground="#38BDF8"
+                        BorderBrush="#0284C7"
+                        BorderThickness="1"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+
+                <Button Grid.Column="2" 
+                        Content="Done / Close" 
+                        Click="Close_Click"
+                        Height="40"
+                        Background="#0284C7"
+                        Foreground="#FFFFFF"
+                        BorderThickness="0"
+                        FontWeight="Bold"
+                        Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
