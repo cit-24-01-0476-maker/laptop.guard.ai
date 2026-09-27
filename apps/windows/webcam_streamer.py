@@ -1,3 +1,4 @@
+import sys
 import time
 import urllib.request
 import json
@@ -12,6 +13,15 @@ import ctypes
 from PIL import ImageGrab
 import psutil
 
+# Ensure Windows console doesn't crash on emoji characters
+try:
+    if sys.stdout:
+        sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
+    if sys.stderr:
+        sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
+except Exception:
+    pass
+
 DEVICE_ID = "dev_oshadhaperera_925a94"
 BASE_URL = "https://laptopguard-api.onrender.com/api/v1"
 FRAME_URL = f"{BASE_URL}/camera/frame/{DEVICE_ID}"
@@ -23,9 +33,9 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "face_detection_yunet_2023m
 
 # Global state
 g_is_armed = True
-g_current_ssid = "Oshadha's A56 😂"
+g_current_ssid = "Oshadha's A56"
 g_local_ip = "192.168.1.12"
-g_trusted_ssids = {"Oshadha's A56 😂", "Oshadha's A56"}
+g_trusted_ssids = {"Oshadha's A56", "Oshadha's A56 😂"}
 last_face_alert_time = 0
 last_usb_alert_time = 0
 last_geofence_alert_time = 0
@@ -295,7 +305,8 @@ def webcam_and_ai_face_worker():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.48, (0, 229, 255), 1, cv2.LINE_AA)
             cv2.putText(frame, status_tag, (w - 230, 23),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.44, tag_color, 1, cv2.LINE_AA)
-            cv2.putText(frame, f"DELL G15 • WIFI: {g_current_ssid} • IP: {g_local_ip} • FACES: {face_count}", (12, h - 9),
+            safe_ssid = re.sub(r'[^\x20-\x7E]', '', g_current_ssid).strip() or "Wi-Fi"
+            cv2.putText(frame, f"DELL G15 • WIFI: {safe_ssid} • IP: {g_local_ip} • FACES: {face_count}", (12, h - 9),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.38, (203, 213, 225), 1, cv2.LINE_AA)
 
             # Encode to JPEG
