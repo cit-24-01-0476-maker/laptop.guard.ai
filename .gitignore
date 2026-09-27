@@ -20,6 +20,8 @@ dist/
 *.apk
 !apps/web/public/LaptopGuard-Setup.exe
 !apps/web/public/LaptopGuard-AI.apk
+!apps/web/public/downloads/LaptopGuard-Setup.exe
+!apps/web/public/downloads/LaptopGuard-AI.apk
 !services/backend/static/LaptopGuard-Setup.exe
 !services/backend/static/LaptopGuard-AI.apk
 !services/backend/static/web/LaptopGuard-Setup.exe
