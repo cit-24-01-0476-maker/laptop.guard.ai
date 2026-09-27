@@ -7,8 +7,8 @@ from fastapi.responses import Response, JSONResponse, FileResponse, RedirectResp
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["Downloads & Updates"])
 
-CURRENT_VERSION = "1.6.1"
-RELEASE_DATE = "2026-09-26"
+CURRENT_VERSION = "1.7.0"
+RELEASE_DATE = "2026-09-27"
 
 @router.get("/manifest")
 async def get_version_manifest(response: Response):
