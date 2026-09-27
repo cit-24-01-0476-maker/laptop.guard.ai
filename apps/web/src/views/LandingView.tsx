@@ -134,6 +134,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
           {/* Center Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-600">
+            <a href="#video-demo" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-50/80 border border-cyan-200/80 text-cyan-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+              <span>AI Video Demo</span>
+            </a>
             <a href="#features" className="hover:text-blue-600 transition-colors">Core Sentinel</a>
             <a href="#simulator" className="hover:text-blue-600 transition-colors">Live Simulation</a>
             <a href="#mobile-app" className="hover:text-blue-600 transition-colors">Mobile Remote</a>
@@ -433,6 +437,90 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* Cinematic AI Video Showcase Section */}
+      <section id="video-demo" className="py-12 sm:py-16 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto">
+        <div className="relative rounded-[32px] sm:rounded-[40px] bg-gradient-to-b from-slate-950 via-[#070F22] to-slate-950 border border-cyan-500/30 shadow-[0_0_60px_rgba(0,242,254,0.15)] overflow-hidden p-5 sm:p-10 text-white">
+          
+          {/* Subtle Cyber Grid Matrix Background */}
+          <div className="absolute inset-0 pointer-events-none opacity-10">
+            <div 
+              className="absolute inset-0"
+              style={{
+                backgroundImage: 'linear-gradient(#00F2FE 1px, transparent 1px), linear-gradient(90deg, #00F2FE 1px, transparent 1px)',
+                backgroundSize: '40px 40px'
+              }}
+            />
+          </div>
+
+          <div className="relative z-10 max-w-4xl mx-auto space-y-6">
+            
+            {/* Header Badge & Title */}
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 text-xs font-mono font-bold shadow-lg">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>OFFICIAL AI DEMO // GOOGLE FLOW ENGINE</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
+                Experience Autonomous Cyber Defense in Action
+              </h2>
+              <p className="text-xs sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                Watch how LaptopGuard AI detects hardware disconnects in <strong>500ms</strong>, scans unauthorized faces with Neural YuNet DNN, and locks rogue USB devices in real time.
+              </p>
+            </div>
+
+            {/* Cinematic High-Definition Video Player */}
+            <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-cyan-500/40 shadow-2xl bg-black group">
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                poster="/flow_video_poster.jpg"
+                className="w-full aspect-video object-contain bg-black"
+                src="/laptopguard_flow_demo.mp4"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+
+            {/* Video Feature Highlights & Actions */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 text-xs">
+              {/* Feature Chips */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-slate-300 font-mono text-[11px]">
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  <span>500ms Watchdog</span>
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  <span>Neural Face Reticle</span>
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Fluid 30FPS Mirror</span>
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span>BadUSB Defense</span>
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 flex-shrink-0">
+                <a
+                  href="/laptopguard_flow_demo.mp4"
+                  download="LaptopGuard_AI_Flow_Demo.mp4"
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold transition-all flex items-center gap-2 border border-white/10 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Download MP4 (18 MB)</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 

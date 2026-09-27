@@ -556,6 +556,28 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   </div>
                 </div>
 
+                {/* AI Demo Video Showcase Banner */}
+                {onOpenIntro && (
+                  <div 
+                    onClick={onOpenIntro}
+                    className="ios-jelly-card p-3 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-cyan-500/30 text-white flex items-center justify-between gap-3 shadow-md cursor-pointer hover:border-cyan-400/60 active:scale-98 transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                        <Play className="w-4 h-4 fill-white translate-x-0.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-white tracking-wide truncate">Official AI Video Demo</span>
+                          <span className="px-1.5 py-0.2 rounded bg-cyan-400/20 text-cyan-300 text-[9px] font-mono font-bold">HD</span>
+                        </div>
+                        <span className="text-[10px] text-slate-300 truncate block">Watch Google Flow Autonomous Sentinel</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  </div>
+                )}
+
                 {/* Giant Hero 1-Touch Armed / Disarmed Shield Bubble */}
                 <div className="ios-jelly-card p-5 rounded-3xl shadow-md flex flex-col items-center text-center relative overflow-hidden">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">
