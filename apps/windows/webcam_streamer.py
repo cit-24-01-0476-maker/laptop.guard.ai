@@ -66,6 +66,7 @@ def ensure_device_pairing():
             "device_id": DEVICE_ID,
             "device_name": "Dell G15 Sentinel (Oshadha)",
             "device_public_key": "ed25519_pk_hardware_sentinel",
+            "target_email": os.environ.get("LAPTOPGUARD_OWNER_EMAIL", "oska@laptopguard.ai"),
             "manufacturer": "Dell Inc.",
             "model": "G15 5530",
             "os_version": "Windows 11 Home",
