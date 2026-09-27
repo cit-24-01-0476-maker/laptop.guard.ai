@@ -32,7 +32,9 @@ import {
   QrCode,
   Globe,
   Sliders,
-  Sparkles
+  Sparkles,
+  MoreVertical,
+  Info
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import {
@@ -83,6 +85,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
 
   // Camera Live states (Automatic hardware access, no permission roadblock)
   const [cameraPermitted, setCameraPermitted] = useState<boolean>(true);
@@ -302,59 +305,106 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
       {/* 1. Mobile Top Frosted Glass Status Header */}
       <header className="w-full max-w-md sticky top-0 z-40 px-2 sm:px-3 pt-1 pb-1">
-        <div className="ios-jelly-card px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shadow-sm">
-          <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
+        <div className="ios-jelly-card px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shadow-sm relative">
+          {/* Left Brand & Connection Pill */}
+          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
             <BrandLogo size="sm" subtitle={false} />
-            <div className="flex items-center gap-1 text-[9px] text-slate-500 font-medium pl-0.5">
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="hidden xs:inline">{isWsConnected ? 'Live' : 'Sync'}</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/70 border border-slate-200/80 text-[10px] font-bold text-slate-600 shadow-2xs font-mono">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+              <span>{isWsConnected ? 'LIVE' : 'SYNC'}</span>
             </div>
           </div>
 
-          {/* Quick controls - perfectly fitted and never clipped */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+          {/* Right Action Controls - Guaranteed Zero Clipping */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {onOpenIntro && (
               <button
                 onClick={onOpenIntro}
-                className="ios-bubble-btn p-1.5 sm:p-2 rounded-xl bg-cyan-50/80 hover:bg-cyan-100 text-cyan-700 border border-cyan-200/80 shadow-xs cursor-pointer"
-                title="Play Cyber Intro"
+                className="ios-bubble-btn px-2.5 py-1.5 rounded-xl bg-cyan-50/90 hover:bg-cyan-100 text-cyan-800 border border-cyan-300/80 text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                title="Watch Official AI Video Demo"
               >
-                <Play className="w-3.5 h-3.5 fill-cyan-600 text-cyan-600" />
+                <Play className="w-3 h-3 fill-cyan-600 text-cyan-600" />
+                <span>Demo</span>
               </button>
             )}
+
             <button
               onClick={() => setIsQrScannerOpen(true)}
-              className="ios-bubble-btn py-1.5 px-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer flex-shrink-0"
-              title="Scan Laptop Screen QR Code to Bond"
+              className="ios-bubble-btn px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer flex-shrink-0"
+              title="Pair with Laptop QR Code"
             >
               <QrCode className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{currentDev ? 'QR Bond' : 'Pair'}</span>
+              <span>{currentDev ? 'Pair' : 'Bond'}</span>
             </button>
-            <button
-              onClick={() => refreshAll()}
-              className="ios-bubble-btn p-1.5 sm:p-2 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200/80 shadow-xs cursor-pointer flex-shrink-0"
-              title="Refresh Telemetry"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-            {onLockMasterAccess && (
+
+            {/* Quick Actions Dropdown Button */}
+            <div className="relative">
               <button
-                onClick={onLockMasterAccess}
-                className="ios-bubble-btn p-1.5 sm:p-2 rounded-xl bg-rose-50/80 hover:bg-rose-100 text-rose-600 border border-rose-200/80 shadow-xs cursor-pointer flex-shrink-0"
-                title="Lock Master Access (PIN Required)"
+                onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border shadow-xs ${
+                  isHeaderMenuOpen
+                    ? 'bg-blue-600 text-white border-blue-700'
+                    : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200/80'
+                }`}
+                title="More Options"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <MoreVertical className="w-3.5 h-3.5" />
               </button>
-            )}
-            {!Capacitor.isNativePlatform() && (
-              <button
-                onClick={onOpenDashboard}
-                className="ios-bubble-btn py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold hidden xs:flex items-center gap-1 shadow-xs cursor-pointer flex-shrink-0"
-                title="Switch to PC Dashboard View"
-              >
-                <span>PC</span>
-              </button>
-            )}
+
+              {/* Popover Menu */}
+              {isHeaderMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-black/10"
+                    onClick={() => setIsHeaderMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 space-y-1 text-xs">
+                    <button
+                      onClick={() => {
+                        refreshAll();
+                        setIsHeaderMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition-colors text-left"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Refresh Telemetry</span>
+                    </button>
+
+                    {onLockMasterAccess && (
+                      <button
+                        onClick={() => {
+                          onLockMasterAccess();
+                          setIsHeaderMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 font-bold transition-colors text-left"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Lock Master PIN</span>
+                      </button>
+                    )}
+
+                    {!Capacitor.isNativePlatform() && (
+                      <button
+                        onClick={() => {
+                          onOpenDashboard();
+                          setIsHeaderMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition-colors text-left"
+                      >
+                        <Laptop className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Switch to PC View</span>
+                      </button>
+                    )}
+
+                    <div className="pt-1 border-t border-slate-100 px-3 py-1 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                      <span>LaptopGuard</span>
+                      <span>v{currentVersion}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
           </div>
         </div>
 
@@ -370,7 +420,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       </header>
 
       {/* 2. Main Tab Body with guaranteed clearance above bottom nav */}
-      <main className="w-full max-w-md px-2 sm:px-3 pt-2 pb-28 sm:pb-32 flex-1 flex flex-col gap-3.5 z-10 min-w-0">
+      <main className="w-full max-w-md px-2 sm:px-3 pt-2 pb-36 sm:pb-40 flex-1 flex flex-col gap-3.5 z-10 min-w-0">
 
         {/* ======================================================== */}
         {/* TAB 1: HOME / DASHBOARD                                 */}
@@ -1382,72 +1432,124 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
       </main>
 
-      {/* 3. Floating iOS Jelly Glass Bottom Navigation Bar */}
+      {/* 3. Floating Next-Gen iOS Jelly Glass Bottom Navigation Bar */}
       <nav 
-        className="fixed left-2 sm:left-3 right-2 sm:right-3 max-w-md mx-auto ios-frosted-nav rounded-[28px] px-1.5 sm:px-2 py-1.5 z-40 flex items-center justify-between shadow-2xl transition-all"
+        className="fixed left-2 sm:left-4 right-2 sm:right-4 max-w-md mx-auto ios-frosted-nav rounded-[32px] px-2 py-1.5 z-50 flex items-center justify-around shadow-[0_12px_45px_rgba(0,0,0,0.16)] transition-all border border-white/90 backdrop-blur-2xl bg-white/92"
         style={{ bottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}
       >
+        {/* Tab 1: Sentinel (Home) */}
         <button
           onClick={() => setActiveTab('home')}
-          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 cursor-pointer relative group ${
             activeTab === 'home'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+              ? 'text-blue-600 font-extrabold'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Shield className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[10px] tracking-tight">Home</span>
+          <div className={`p-1.5 rounded-xl transition-all duration-200 ${
+            activeTab === 'home'
+              ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/35 scale-105'
+              : 'text-slate-500 group-hover:scale-105'
+          }`}>
+            <Shield className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Sentinel</span>
+          {activeTab === 'home' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_#2563EB] mt-0.5" />
+          )}
         </button>
 
+        {/* Tab 2: Camera & Screen Mirror */}
         <button
           onClick={() => setActiveTab('camera')}
-          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 cursor-pointer relative group ${
             activeTab === 'camera'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+              ? 'text-blue-600 font-extrabold'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Camera className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[10px] tracking-tight">Camera</span>
+          <div className={`p-1.5 rounded-xl transition-all duration-200 ${
+            activeTab === 'camera'
+              ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/35 scale-105'
+              : 'text-slate-500 group-hover:scale-105'
+          }`}>
+            <Camera className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Live Feed</span>
+          {activeTab === 'camera' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_#2563EB] mt-0.5" />
+          )}
         </button>
 
+        {/* Tab 3: GPS Radar & Proximity */}
         <button
           onClick={() => setActiveTab('map')}
-          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 cursor-pointer relative group ${
             activeTab === 'map'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+              ? 'text-blue-600 font-extrabold'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <MapPin className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[10px] tracking-tight">Location</span>
+          <div className={`p-1.5 rounded-xl transition-all duration-200 ${
+            activeTab === 'map'
+              ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/35 scale-105'
+              : 'text-slate-500 group-hover:scale-105'
+          }`}>
+            <MapPin className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Radar</span>
+          {activeTab === 'map' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_#2563EB] mt-0.5" />
+          )}
         </button>
 
+        {/* Tab 4: Security Alerts */}
         <button
           onClick={() => setActiveTab('alerts')}
-          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer relative ${
+          className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 cursor-pointer relative group ${
             activeTab === 'alerts'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+              ? 'text-blue-600 font-extrabold'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Bell className="w-4 h-4 stroke-[2.2]" />
-          {events.length > 0 && (
-            <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+          <div className={`p-1.5 rounded-xl transition-all duration-200 relative ${
+            activeTab === 'alerts'
+              ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/35 scale-105'
+              : 'text-slate-500 group-hover:scale-105'
+          }`}>
+            <Bell className="w-4 h-4 stroke-[2.2]" />
+            {events.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white shadow-xs animate-pulse">
+                {events.length > 9 ? '9+' : events.length}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Alerts</span>
+          {activeTab === 'alerts' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_#2563EB] mt-0.5" />
           )}
-          <span className="text-[10px] tracking-tight">Alerts</span>
         </button>
 
+        {/* Tab 5: Settings / Profile */}
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex-1 max-w-[64px] flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-2xl transition-all cursor-pointer ${
+          className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 cursor-pointer relative group ${
             activeTab === 'profile'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+              ? 'text-blue-600 font-extrabold'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <User className="w-4 h-4 stroke-[2.2]" />
-          <span className="text-[10px] tracking-tight">Profile</span>
+          <div className={`p-1.5 rounded-xl transition-all duration-200 ${
+            activeTab === 'profile'
+              ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/35 scale-105'
+              : 'text-slate-500 group-hover:scale-105'
+          }`}>
+            <User className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Settings</span>
+          {activeTab === 'profile' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_#2563EB] mt-0.5" />
+          )}
         </button>
 
       </nav>
