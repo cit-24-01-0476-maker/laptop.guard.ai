@@ -58,16 +58,16 @@ export const getCameraStreamUrl = (deviceId: string): string => {
   return `${getApiBaseUrl()}/camera/stream/${deviceId}`;
 };
 
-export const getCameraSnapshotUrl = (deviceId: string): string => {
-  return `${getApiBaseUrl()}/camera/snapshot/${deviceId}?t=${Date.now()}`;
+export const getCameraSnapshotUrl = (deviceId: string, ts?: number): string => {
+  return `${getApiBaseUrl()}/camera/snapshot/${deviceId}?t=${ts ?? Date.now()}`;
 };
 
 export const getScreenStreamUrl = (deviceId: string): string => {
   return `${getApiBaseUrl()}/screen/stream/${deviceId}`;
 };
 
-export const getScreenSnapshotUrl = (deviceId: string): string => {
-  return `${getApiBaseUrl()}/screen/snapshot/${deviceId}?t=${Date.now()}`;
+export const getScreenSnapshotUrl = (deviceId: string, ts?: number): string => {
+  return `${getApiBaseUrl()}/screen/snapshot/${deviceId}?t=${ts ?? Date.now()}`;
 };
 
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {

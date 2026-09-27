@@ -87,7 +87,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   // Camera Live states (Automatic hardware access, no permission roadblock)
   const [cameraPermitted, setCameraPermitted] = useState<boolean>(true);
   const [cameraKey, setCameraKey] = useState<number>(Date.now());
-  const [cameraMode, setCameraMode] = useState<'stream' | 'poll'>('poll');
+  const [cameraMode, setCameraMode] = useState<'stream' | 'poll'>('stream');
   const [pollUrl, setPollUrl] = useState<string>('');
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState<boolean>(false);
   const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
@@ -216,24 +216,24 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     }
   };
 
-  // Live Media Feed Auto-Polling (Webcam every 800ms, Screen Mirror every 1200ms)
+  // Live Media Feed Auto-Polling (Only runs if cameraMode is 'poll')
   useEffect(() => {
     let pollTimer: any = null;
-    if (activeTab === 'camera' && currentDev?.id) {
+    if (activeTab === 'camera' && currentDev?.id && cameraMode === 'poll') {
       if (mediaFeedMode === 'webcam') {
         setPollUrl(getCameraSnapshotUrl(currentDev.id));
         pollTimer = setInterval(() => {
           setPollUrl(getCameraSnapshotUrl(currentDev.id));
-        }, 800);
+        }, 1000);
       } else {
         setScreenPollUrl(getScreenSnapshotUrl(currentDev.id));
         pollTimer = setInterval(() => {
           setScreenPollUrl(getScreenSnapshotUrl(currentDev.id));
-        }, 1200);
+        }, 1500);
       }
     }
     return () => clearInterval(pollTimer);
-  }, [activeTab, mediaFeedMode, currentDev?.id]);
+  }, [activeTab, mediaFeedMode, cameraMode, currentDev?.id]);
 
   // Manual Check for App Updates (triggered when user clicks button in Profile tab)
   const checkAutoUpdate = async (manual = true) => {
@@ -897,30 +897,74 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </div>
               </div>
 
+              {/* Stream Protocol Switcher (Real-Time Stream vs Snapshot Poll) */}
+              <div className="flex items-center justify-between px-2 py-1.5 rounded-2xl bg-white/70 border border-slate-200/80 mb-2.5 text-[10px]">
+                <span className="text-slate-500 font-medium">Protocol Mode:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setCameraMode('stream');
+                      setCameraKey(Date.now());
+                      setScreenKey(Date.now());
+                    }}
+                    className={`px-2 py-0.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      cameraMode === 'stream'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    ⚡ Real-Time Stream (Fluid)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCameraMode('poll');
+                      const now = Date.now();
+                      setPollUrl(getCameraSnapshotUrl(currentDev.id, now));
+                      setScreenPollUrl(getScreenSnapshotUrl(currentDev.id, now));
+                    }}
+                    className={`px-2 py-0.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      cameraMode === 'poll'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    📷 Snapshot Poll
+                  </button>
+                </div>
+              </div>
+
               {/* Video / Screen Stream Container */}
               <div className="rounded-2xl overflow-hidden bg-slate-950 aspect-video relative flex items-center justify-center border border-slate-800 shadow-inner">
                 {mediaFeedMode === 'webcam' ? (
                   <img
-                    key={`cam-${cameraKey}`}
-                    src={pollUrl || `${getCameraSnapshotUrl(currentDev.id)}?t=${cameraKey}`}
+                    key={`cam-${cameraMode}-${cameraKey}`}
+                    src={
+                      cameraMode === 'stream'
+                        ? `${getCameraStreamUrl(currentDev.id)}?k=${cameraKey}`
+                        : pollUrl || getCameraSnapshotUrl(currentDev.id, cameraKey)
+                    }
                     alt="Live Laptop Webcam Stream"
                     className="w-full h-full object-cover"
                     onError={() => {
                       setTimeout(() => {
-                        setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?retry=${Date.now()}`);
-                      }, 1000);
+                        setCameraKey(Date.now());
+                      }, 2000);
                     }}
                   />
                 ) : (
                   <img
-                    key={`scr-${screenKey}`}
-                    src={screenPollUrl || `${getScreenSnapshotUrl(currentDev.id)}?t=${screenKey}`}
+                    key={`scr-${cameraMode}-${screenKey}`}
+                    src={
+                      cameraMode === 'stream'
+                        ? `${getScreenStreamUrl(currentDev.id)}?k=${screenKey}`
+                        : screenPollUrl || getScreenSnapshotUrl(currentDev.id, screenKey)
+                    }
                     alt="Live Laptop Desktop Mirror"
                     className="w-full h-full object-cover"
                     onError={() => {
                       setTimeout(() => {
-                        setScreenPollUrl(`${getScreenSnapshotUrl(currentDev.id)}?retry=${Date.now()}`);
-                      }, 1200);
+                        setScreenKey(Date.now());
+                      }, 2000);
                     }}
                   />
                 )}
@@ -935,7 +979,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   </div>
 
                   <div className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-mono text-emerald-300 border border-white/10 shadow-sm flex-shrink-0">
-                    {mediaFeedMode === 'webcam' ? 'YuNet ACTIVE' : 'GDI ACTIVE'}
+                    {cameraMode === 'stream' ? '⚡ LIVE STREAM' : '📷 POLLING'}
                   </div>
                 </div>
 
@@ -943,19 +987,20 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 <div className="absolute bottom-2 right-2">
                   <button
                     onClick={() => {
+                      const now = Date.now();
                       if (mediaFeedMode === 'webcam') {
-                        setCameraKey(Date.now());
-                        setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                        setCameraKey(now);
+                        setPollUrl(getCameraSnapshotUrl(currentDev.id, now));
                       } else {
-                        setScreenKey(Date.now());
-                        setScreenPollUrl(`${getScreenSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                        setScreenKey(now);
+                        setScreenPollUrl(getScreenSnapshotUrl(currentDev.id, now));
                       }
                     }}
                     className="py-1 px-2.5 rounded-lg bg-black/80 backdrop-blur-md hover:bg-black text-cyan-300 text-[10px] font-bold flex items-center gap-1 border border-white/15 active:scale-95 transition-all cursor-pointer shadow-sm"
-                    title="Refresh Live Stream"
+                    title="Reconnect / Refresh Live Stream"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    <span>Refresh</span>
+                    <span>Reconnect</span>
                   </button>
                 </div>
               </div>
