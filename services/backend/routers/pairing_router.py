@@ -401,3 +401,29 @@ def confirm_pairing(
         "device_id": confirm_in.device_id,
         "owner_user_id": user_id
     }
+
+
+@router.get("/device/{device_id}/status")
+def get_device_pairing_status(
+    device_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Public device status endpoint for physical hardware agents (Windows Sentinel).
+    Allows Sentinel to know if this hardware device is currently paired to an active owner.
+    """
+    device = db.query(models.ProtectedDevice).filter(models.ProtectedDevice.id == device_id).first()
+    if not device:
+        return {"device_id": device_id, "is_paired": False, "status": "Unpaired"}
+
+    ownership = db.query(models.DeviceOwnership).filter(
+        models.DeviceOwnership.device_id == device_id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).first()
+
+    return {
+        "device_id": device.id,
+        "device_name": device.device_name,
+        "is_paired": ownership is not None,
+        "status": device.status
+    }

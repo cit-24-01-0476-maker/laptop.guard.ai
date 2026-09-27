@@ -40,7 +40,7 @@ BASE_URL = get_base_url()
 FRAME_URL = f"{BASE_URL}/camera/frame/{DEVICE_ID}"
 SCREEN_URL = f"{BASE_URL}/screen/frame/{DEVICE_ID}"
 EVENT_URL = f"{BASE_URL}/events/report"
-STATUS_URL = f"{BASE_URL}/devices/{DEVICE_ID}/status"
+STATUS_URL = f"{BASE_URL}/pairing/device/{DEVICE_ID}/status"
 
 def ensure_device_pairing():
     """Zero-Trust Pairing Handshake for Windows Sentinel."""
