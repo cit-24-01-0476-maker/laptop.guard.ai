@@ -20,7 +20,13 @@ def get_events(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    query = db.query(models.SecurityEvent).join(models.Device).filter(models.Device.user_id == current_user.id)
+    query = db.query(models.SecurityEvent).join(
+        models.DeviceOwnership,
+        models.SecurityEvent.device_id == models.DeviceOwnership.device_id
+    ).filter(
+        models.DeviceOwnership.user_id == current_user.id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    )
     if device_id:
         query = query.filter(models.SecurityEvent.device_id == device_id)
     if severity:
@@ -32,10 +38,17 @@ def get_events(
 @router.post("/report")
 async def report_event(event_in: schemas.SecurityEventCreate, db: Session = Depends(get_db)):
     """Device agent reports a detected security event."""
-    device = db.query(models.Device).filter(models.Device.id == event_in.device_id).first()
+    device = db.query(models.ProtectedDevice).filter(models.ProtectedDevice.id == event_in.device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not registered")
     
+    # Find active owner
+    ownership = db.query(models.DeviceOwnership).filter(
+        models.DeviceOwnership.device_id == device.id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).first()
+    owner_user_id = ownership.user_id if ownership else None
+
     now = datetime.utcnow()
     event_id = f"ev_{uuid.uuid4().hex[:10]}"
     
@@ -56,40 +69,45 @@ async def report_event(event_in: schemas.SecurityEventCreate, db: Session = Depe
     if event_in.severity.upper() == "CRITICAL":
         device.status = "Warning"
 
-    # Create user notification
-    notif_id = f"ntf_{uuid.uuid4().hex[:10]}"
-    notif = models.Notification(
-        id=notif_id,
-        user_id=device.user_id,
-        device_id=device.id,
-        title=f"Security Alert: {event_in.event_type.replace('_', ' ').title()}",
-        body=event_in.description,
-        category="CRITICAL" if event_in.severity.upper() == "CRITICAL" else "SECURITY",
-        is_read=False,
-        event_id=event_id,
-        created_at=now
-    )
-    db.add(notif)
+    # Create user notification if owner exists
+    notif_id = None
+    notif = None
+    if owner_user_id:
+        notif_id = f"ntf_{uuid.uuid4().hex[:10]}"
+        notif = models.Notification(
+            id=notif_id,
+            user_id=owner_user_id,
+            device_id=device.id,
+            title=f"Security Alert: {event_in.event_type.replace('_', ' ').title()}",
+            body=event_in.description,
+            category="CRITICAL" if event_in.severity.upper() == "CRITICAL" else "SECURITY",
+            is_read=False,
+            event_id=event_id,
+            created_at=now
+        )
+        db.add(notif)
+    
     db.commit()
 
-    # Real-time WebSocket push to user dashboard & mobile app
-    await hub.broadcast_to_user(device.user_id, {
-        "type": "NEW_SECURITY_EVENT",
-        "event": {
-            "id": event_id,
-            "device_id": device.id,
-            "device_name": device.device_name,
-            "event_type": event_in.event_type,
-            "severity": event_in.severity,
-            "description": event_in.description,
-            "created_at": now.isoformat()
-        },
-        "notification": {
-            "id": notif_id,
-            "title": notif.title,
-            "body": notif.body,
-            "category": notif.category
-        }
-    })
+    # Real-time WebSocket push strictly to owner
+    if owner_user_id:
+        await hub.broadcast_to_user(owner_user_id, {
+            "type": "NEW_SECURITY_EVENT",
+            "event": {
+                "id": event_id,
+                "device_id": device.id,
+                "device_name": device.device_name,
+                "event_type": event_in.event_type,
+                "severity": event_in.severity,
+                "description": event_in.description,
+                "created_at": now.isoformat()
+            },
+            "notification": {
+                "id": notif_id,
+                "title": notif.title,
+                "body": notif.body,
+                "category": notif.category
+            } if notif else None
+        })
 
     return {"status": "recorded", "event_id": event_id}

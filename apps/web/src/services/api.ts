@@ -73,9 +73,13 @@ export const getScreenSnapshotUrl = (deviceId: string, ts?: number): string => {
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
     const token = localStorage.getItem('laptopguard_token');
+    const controllerId = localStorage.getItem('laptopguard_controller_id');
     const authHeaders: Record<string, string> = {};
     if (token) {
       authHeaders['Authorization'] = `Bearer ${token}`;
+    }
+    if (controllerId) {
+      authHeaders['X-Controller-ID'] = controllerId;
     }
 
     const apiBase = getApiBaseUrl();
@@ -101,19 +105,58 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
 export const api = {
   // Auth
   login: (email: string, password: string) =>
-    fetchJson<{ access_token: string; token_type: string; user: any }>('/auth/login', {
+    fetchJson<{ access_token: string; token_type: string; controller_id: string; is_controller_trusted: boolean; user: any }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     }),
   register: (email: string, password: string, full_name: string, secret_pin?: string) =>
-    fetchJson<{ access_token: string; token_type: string; user: any }>('/auth/register', {
+    fetchJson<{ access_token: string; token_type: string; controller_id: string; is_controller_trusted: boolean; user: any }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, full_name, secret_pin: secret_pin || '6728' })
     }),
   getMe: () => fetchJson<any>('/auth/me'),
+
+  // Secure One-Time Pairing
+  claimPairingCode: (pairingCode: string) =>
+    fetchJson<{
+      pairing_request_id: string;
+      device_id: string;
+      device_name: string;
+      manufacturer?: string;
+      model?: string;
+      os_version?: string;
+      status: string;
+      expires_in_seconds: number;
+    }>('/pairing/claim', {
+      method: 'POST',
+      body: JSON.stringify({ pairing_code: pairingCode })
+    }),
+  getPairingStatus: (pairingRequestId: string) =>
+    fetchJson<{
+      pairing_request_id: string;
+      status: string;
+      claimed_by_email?: string;
+      claimed_by_user_id?: string;
+      expires_in_seconds: number;
+    }>(`/pairing/status/${pairingRequestId}`),
+
+  // Trusted Controllers & Step-Up Authorization
+  getControllers: () => fetchJson<any[]>('/controllers'),
+  authorizeController: (data: { controller_id?: string; controller_type?: string; display_name?: string; verification_code_or_pin: string }) =>
+    fetchJson<any>('/controllers/authorize', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+  revokeController: (controllerId: string) =>
+    fetchJson<{ status: string; message: string }>(`/controllers/${controllerId}/revoke`, { method: 'POST' }),
+  revokeAllControllers: () =>
+    fetchJson<{ status: string; message: string }>('/controllers/revoke-all', { method: 'POST' }),
+
   // Devices
   getDevices: () => fetchJson<Device[]>('/devices'),
   getDevice: (id: string) => fetchJson<Device>(`/devices/${id}`),
+  removeDevice: (deviceId: string) =>
+    fetchJson<{ status: string; message: string }>(`/devices/${deviceId}/remove`, { method: 'POST' }),
   refreshLocation: (id: string, payload?: any) => fetchJson<any>(`/devices/${id}/refresh-location`, { method: 'POST', body: JSON.stringify(payload || {}) }),
   generatePairingToken: () => fetchJson<{ pairing_token: string; expires_at: string; qr_payload: any }>('/devices/generate-pairing-token', { method: 'POST' }),
   confirmPairing: (data: any) => fetchJson<{ status: string; device_id: string }>('/devices/confirm-pairing', { method: 'POST', body: JSON.stringify(data) }),

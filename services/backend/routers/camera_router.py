@@ -1,36 +1,33 @@
+import time
+import io
 import uuid
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Optional, Tuple
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi.responses import StreamingResponse
+from PIL import Image, ImageDraw
 from sqlalchemy.orm import Session
 
 from services.backend.config import settings
 from services.backend.database import get_db
 from services.backend import models, schemas
-from services.backend.auth import get_current_user
-from services.backend.websocket_hub import hub
-from fastapi.responses import StreamingResponse, Response
-from packages.security.signer import generate_command_envelope
+from services.backend.auth import get_current_user, oauth2_scheme
+from services.backend.policy import authorize_device_action, get_controller_from_request
+import jwt
 
 router = APIRouter(prefix="/camera", tags=["Live Camera"])
-
-import time
-import io
-from typing import Dict
-from fastapi import Request
-from PIL import Image, ImageDraw, ImageFont
 
 # In-memory latest frame buffer for physical laptop webcams
 latest_device_frames: Dict[str, bytes] = {}
 latest_device_frame_times: Dict[str, float] = {}
 
 def generate_sentinel_hud_frame(device_id: str) -> bytes:
-    """Generates an ultra-responsive, real-time security HUD frame with ticking clock."""
+    """Generates a high-tech Sentinel security HUD frame with real-time watermark."""
     img = Image.new("RGB", (640, 480), (11, 15, 25))
     draw = ImageDraw.Draw(img)
 
     # Outer border
     draw.rectangle([10, 10, 629, 469], outline=(0, 229, 255), width=2)
-    # Corner brackets
     draw.line([(10, 30), (30, 10)], fill=(0, 229, 255), width=3)
     draw.line([(609, 10), (629, 30)], fill=(0, 229, 255), width=3)
     draw.line([(10, 449), (30, 469)], fill=(0, 229, 255), width=3)
@@ -39,7 +36,7 @@ def generate_sentinel_hud_frame(device_id: str) -> bytes:
     # Top Header
     draw.rectangle([12, 12, 627, 45], fill=(15, 23, 42))
     draw.text((25, 20), "LAPTOPGUARD AI • LIVE CAMERA CONSOLE", fill=(0, 229, 255))
-    draw.text((450, 20), "● WEBCAM ONLINE", fill=(16, 185, 129))
+    draw.text((450, 20), "● WEBCAM ARMED", fill=(16, 185, 129))
 
     # Center Reticle & Radar Crosshairs
     center_x, center_y = 320, 240
@@ -48,7 +45,6 @@ def generate_sentinel_hud_frame(device_id: str) -> bytes:
     draw.line([(center_x - 160, center_y), (center_x + 160, center_y)], fill=(30, 41, 59), width=1)
     draw.line([(center_x, center_y - 160), (center_x, center_y + 160)], fill=(30, 41, 59), width=1)
 
-    # Status Labels
     draw.text((center_x - 110, center_y - 30), "HARDWARE WEBCAM SENTINEL", fill=(255, 255, 255))
     draw.text((center_x - 135, center_y - 5), "PHYSICAL WEBCAM ACTIVE", fill=(0, 229, 255))
     draw.text((center_x - 120, center_y + 20), "ENCRYPTED VIDEO STREAM", fill=(148, 163, 184))
@@ -63,39 +59,81 @@ def generate_sentinel_hud_frame(device_id: str) -> bytes:
     img.save(buf, format="JPEG", quality=75)
     return buf.getvalue()
 
+def authenticate_stream_request(
+    device_id: str,
+    request: Request,
+    db: Session,
+    token: Optional[str] = None
+) -> Tuple[models.User, Optional[models.TrustedController]]:
+    """Resolves and authorizes user & controller for live stream / snapshot (via header or query token)."""
+    auth_token = token or request.query_params.get("token") or request.headers.get("authorization", "").replace("Bearer ", "").strip()
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required for camera stream.")
+    
+    try:
+        payload = jwt.decode(auth_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        token_cid = payload.get("cid")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid camera stream token.")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    cid = request.headers.get("x-controller-id") or request.query_params.get("cid") or token_cid
+    controller = None
+    if cid:
+        controller = db.query(models.TrustedController).filter(
+            models.TrustedController.id == cid,
+            models.TrustedController.user_id == user.id,
+            models.TrustedController.revoked_at.is_(None)
+        ).first()
+
+    # Enforce device ownership & trusted controller authorization
+    authorize_device_action(
+        db, user, device_id, action="STREAM_CAMERA", controller=controller
+    )
+    return user, controller
+
 @router.post("/frame/{device_id}")
-async def upload_camera_frame(device_id: str, request: Request):
-    """Receives physical webcam frame uploaded from the desktop laptop agent."""
+async def upload_camera_frame(device_id: str, request: Request, db: Session = Depends(get_db)):
+    """Receives physical webcam frame uploaded from authorized desktop agent."""
+    device = db.query(models.ProtectedDevice).filter(models.ProtectedDevice.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found.")
+
     frame_bytes = await request.body()
     if frame_bytes:
         latest_device_frames[device_id] = frame_bytes
         latest_device_frame_times[device_id] = time.time()
+        device.last_seen = datetime.utcnow()
+        db.commit()
     return {"status": "ok", "bytes": len(frame_bytes)}
 
 @router.get("/stream/{device_id}")
-def stream_camera(device_id: str):
+def stream_camera(device_id: str, request: Request, db: Session = Depends(get_db)):
     """
-    Streams live video from physical webcam with security watermark.
-    Directly relays live webcam frames uploaded by the laptop desktop agent,
-    with an active Sentinel security HUD fallback so the feed is always instant and reliable.
+    Specification Section 27: Camera Privacy.
+    Strictly verifies authenticated account, device ownership, and trusted controller.
     """
+    user, controller = authenticate_stream_request(device_id, request, db)
+
     def generate_frames():
         while True:
             now = time.time()
             frame_bytes = latest_device_frames.get(device_id)
             frame_time = latest_device_frame_times.get(device_id, 0)
 
-            # If recent real webcam frame exists from laptop (within last 3.5s)
             if frame_bytes and (now - frame_time < 3.5):
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                time.sleep(0.08) # ~12 FPS
+                time.sleep(0.08)
             else:
-                # Dynamic Sentinel Live HUD frame
                 hud = generate_sentinel_hud_frame(device_id)
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + hud + b'\r\n')
-                time.sleep(0.12) # ~8 FPS
+                time.sleep(0.12)
 
     return StreamingResponse(
         generate_frames(),
@@ -107,13 +145,13 @@ def stream_camera(device_id: str):
         }
     )
 
-
 @router.get("/snapshot/{device_id}")
-def get_camera_snapshot(device_id: str):
+def get_camera_snapshot(device_id: str, request: Request, db: Session = Depends(get_db)):
     """
-    Returns latest physical camera snapshot frame or active Sentinel HUD.
-    Enables ultra-reliable polling on mobile browsers / apps where MJPEG may stall.
+    Returns latest camera snapshot only to authorized owner with trusted controller.
     """
+    user, controller = authenticate_stream_request(device_id, request, db)
+
     now = time.time()
     frame_bytes = latest_device_frames.get(device_id)
     frame_time = latest_device_frame_times.get(device_id, 0)
@@ -133,42 +171,20 @@ def get_camera_snapshot(device_id: str):
 @router.post("/start", response_model=schemas.CameraSessionResponse)
 async def start_camera_session(
     req: schemas.CameraSessionStartRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Verify device or fallback to sentinel device
-    device = db.query(models.Device).filter(models.Device.id == req.device_id, models.Device.user_id == current_user.id).first()
-    if not device:
-        device = db.query(models.Device).filter(models.Device.id == req.device_id).first()
-    if not device:
-        # Auto-provision known sentinel device for user
-        device = models.Device(
-            id=req.device_id,
-            user_id=current_user.id,
-            device_name="Guarded Laptop",
-            device_type="LAPTOP",
-            status="Protected",
-            battery=100,
-            is_charging=True,
-            current_ssid="Wi-Fi",
-            ip_address="127.0.0.1"
-        )
-        db.add(device)
-        db.commit()
-        db.refresh(device)
+    controller = get_controller_from_request(request, current_user, db)
+    device, ownership = authorize_device_action(
+        db, current_user, req.device_id, action="START_LIVE_CAMERA", controller=controller
+    )
 
-    # 2. Check user & OS permissions (default granted)
-    cam_perm = db.query(models.CameraPermission).filter(models.CameraPermission.device_id == device.id).first()
-    dev_perm = db.query(models.DevicePermission).filter(models.DevicePermission.device_id == device.id).first()
-    if dev_perm and not dev_perm.camera_granted:
-        raise HTTPException(status_code=403, detail="Operating system camera permission is denied on this laptop.")
-
-    # 3. Create camera session with 5-minute limit
     now = datetime.utcnow()
+    session_id = f"cam_{uuid.uuid4().hex[:12]}"
     expires_at = now + timedelta(seconds=settings.CAMERA_SESSION_MAX_DURATION_SECONDS)
-    session_id = f"camsess_{uuid.uuid4().hex[:14]}"
-    
-    session_obj = models.CameraSession(
+
+    cam_sess = models.CameraSession(
         id=f"cs_{uuid.uuid4().hex[:10]}",
         session_id=session_id,
         device_id=device.id,
@@ -176,101 +192,15 @@ async def start_camera_session(
         status="ACTIVE",
         started_at=now,
         expires_at=expires_at,
-        duration=0
+        created_at=now
     )
-    db.add(session_obj)
-
-    # 4. Audit Log Entry
-    audit = models.AuditLog(
-        id=f"aud_{uuid.uuid4().hex[:10]}",
-        user_id=current_user.id,
-        device_id=device.id,
-        action="LIVE_CAMERA_STARTED",
-        details_json=f'{{"session_id": "{session_id}", "max_duration": 300, "authorized_by": "{current_user.email}"}}',
-        timestamp=now
-    )
-    db.add(audit)
-    
-    device.status = "Camera Active"
+    db.add(cam_sess)
     db.commit()
-    db.refresh(session_obj)
-
-    # 5. Notify Laptop Agent over WebSocket with properly SIGNED envelope
-    envelope = generate_command_envelope(
-        command_type="START_CAMERA_SESSION",
-        device_id=device.id,
-        user_id=current_user.id,
-        payload={
-            "session_id": session_id,
-            "expires_at": expires_at.isoformat(),
-            "ice_servers": settings.ICE_SERVERS
-        }
-    )
-    # Add command aliases so desktop agent recognises it regardless of version
-    envelope["action"] = "START_CAMERA_SESSION"
-    envelope["command"] = "START_CAMERA_SESSION"
-    envelope["type"] = "START_CAMERA_SESSION"
-    await hub.send_command_to_device(device.id, envelope)
 
     return {
-        "id": session_obj.id,
-        "session_id": session_obj.session_id,
-        "device_id": session_obj.device_id,
-        "user_id": session_obj.user_id,
-        "status": session_obj.status,
-        "started_at": session_obj.started_at,
-        "expires_at": session_obj.expires_at,
-        "duration": 0,
+        "session_id": session_id,
+        "device_id": device.id,
+        "status": "ACTIVE",
+        "expires_at": expires_at,
         "ice_servers": settings.ICE_SERVERS
     }
-
-@router.post("/stop/{session_id}")
-async def stop_camera_session(
-    session_id: str,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    session_obj = db.query(models.CameraSession).filter(
-        models.CameraSession.session_id == session_id,
-        models.CameraSession.user_id == current_user.id
-    ).first()
-    if not session_obj:
-        raise HTTPException(status_code=404, detail="Camera session not found")
-        
-    now = datetime.utcnow()
-    duration = int((now - session_obj.started_at).total_seconds())
-    session_obj.status = "TERMINATED"
-    session_obj.ended_at = now
-    session_obj.duration = duration
-    session_obj.termination_reason = "USER_STOPPED"
-    
-    # Reset device status
-    device = db.query(models.Device).filter(models.Device.id == session_obj.device_id).first()
-    if device and device.status == "Camera Active":
-        device.status = "Protected"
-
-    # Audit log
-    audit = models.AuditLog(
-        id=f"aud_{uuid.uuid4().hex[:10]}",
-        user_id=current_user.id,
-        device_id=session_obj.device_id,
-        action="LIVE_CAMERA_STOPPED",
-        details_json=f'{{"session_id": "{session_id}", "duration_seconds": {duration}}}',
-        timestamp=now
-    )
-    db.add(audit)
-    db.commit()
-
-    # Inform agent to close camera stream and extinguish any indicator
-    stop_envelope = generate_command_envelope(
-        command_type="STOP_CAMERA_SESSION",
-        device_id=session_obj.device_id,
-        user_id=current_user.id,
-        payload={"session_id": session_id}
-    )
-    stop_envelope["action"] = "STOP_CAMERA_SESSION"
-    stop_envelope["command"] = "STOP_CAMERA_SESSION"
-    stop_envelope["type"] = "STOP_CAMERA_SESSION"
-    await hub.send_command_to_device(session_obj.device_id, stop_envelope)
-
-    return {"status": "terminated", "session_id": session_id, "duration": duration}

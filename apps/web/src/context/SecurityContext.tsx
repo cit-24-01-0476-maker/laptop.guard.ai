@@ -15,6 +15,14 @@ interface SecurityContextType {
   activeCameraSession: CameraSession | null;
   setActiveCameraSession: (s: CameraSession | null) => void;
   
+  // Controller State & Step-up
+  isControllerTrusted: boolean;
+  controllers: any[];
+  isAuthorizeBrowserModalOpen: boolean;
+  setIsAuthorizeBrowserModalOpen: (v: boolean) => void;
+  authorizeThisBrowser: (pin: string) => Promise<boolean>;
+  revokeController: (controllerId: string) => Promise<void>;
+
   // Modals
   isLockModalOpen: boolean;
   setIsLockModalOpen: (v: boolean) => void;
@@ -31,7 +39,7 @@ interface SecurityContextType {
   // Auth & Session
   user: any | null;
   isAuthenticated: boolean;
-  loginUser: (userData: any, token: string) => void;
+  loginUser: (userData: any, token: string, controllerId?: string, isTrusted?: boolean) => void;
   logoutUser: () => void;
 
   // Actions
@@ -46,6 +54,7 @@ interface SecurityContextType {
   deactivateLostMode: (deviceId: string) => Promise<void>;
   requestLocation: (deviceId: string) => Promise<void>;
   takeSnapshot: (deviceId: string) => Promise<void>;
+  removeDevice: (deviceId: string) => Promise<void>;
   refreshAll: () => Promise<void>;
 }
 
@@ -87,6 +96,13 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [activeCameraSession, setActiveCameraSession] = useState<CameraSession | null>(null);
 
+  // Controller State
+  const [isControllerTrusted, setIsControllerTrusted] = useState<boolean>(() => {
+    return localStorage.getItem('laptopguard_controller_trusted') === 'true';
+  });
+  const [controllers, setControllers] = useState<any[]>([]);
+  const [isAuthorizeBrowserModalOpen, setIsAuthorizeBrowserModalOpen] = useState(false);
+
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isAlarmModalOpen, setIsAlarmModalOpen] = useState(false);
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
@@ -94,14 +110,19 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [criticalAlert, setCriticalAlert] = useState<{ title: string; body: string; deviceName: string; time: string } | null>(null);
   const [isAlarmActive, setIsAlarmActive] = useState(false);
 
-  const loginUser = (userData: any, token: string) => {
+  const loginUser = (userData: any, token: string, controllerId?: string, isTrusted?: boolean) => {
     localStorage.setItem('laptopguard_token', token);
     localStorage.setItem('laptopguard_user', JSON.stringify(userData));
+    if (controllerId) {
+      localStorage.setItem('laptopguard_controller_id', controllerId);
+    }
+    const trusted = Boolean(isTrusted);
+    localStorage.setItem('laptopguard_controller_trusted', trusted ? 'true' : 'false');
+    setIsControllerTrusted(trusted);
     setUser(userData);
     if (userData && userData.id) {
       realtimeHub.connect(userData.id);
     }
-    // Immediately fetch devices and data for the logged-in user
     setTimeout(() => {
       refreshAll();
     }, 100);
@@ -110,11 +131,13 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const logoutUser = () => {
     localStorage.removeItem('laptopguard_token');
     localStorage.removeItem('laptopguard_user');
+    localStorage.removeItem('laptopguard_controller_trusted');
     setUser(null);
     setDevices([]);
     setSelectedDevice(null);
     setEvents([]);
     setNotifications([]);
+    setIsControllerTrusted(false);
     realtimeHub.disconnect();
   };
 
@@ -151,6 +174,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setSelectedDevice(bonded);
         } else if (devList.length > 0) {
           setSelectedDevice(devList[0]);
+        } else {
+          setSelectedDevice(null);
         }
       } else if (!selectedDevice && devList.length > 0) {
         setSelectedDevice(devList[0]);
@@ -160,6 +185,19 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         else if (devList.length > 0) setSelectedDevice(devList[0]);
         else setSelectedDevice(null);
       }
+
+      // Refresh Controllers Status
+      try {
+        const ctrlList = await api.getControllers();
+        setControllers(ctrlList);
+        const myCid = localStorage.getItem('laptopguard_controller_id');
+        if (myCid) {
+          const match = ctrlList.find(c => c.id === myCid);
+          const isT = Boolean(match && match.is_trusted);
+          setIsControllerTrusted(isT);
+          localStorage.setItem('laptopguard_controller_trusted', isT ? 'true' : 'false');
+        }
+      } catch (_) {}
 
       const evList = await api.getEvents();
       setEvents(evList);
@@ -174,12 +212,37 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const authorizeThisBrowser = async (pin: string): Promise<boolean> => {
+    let cid = localStorage.getItem('laptopguard_controller_id');
+    if (!cid) {
+      cid = 'ctrl_' + Math.random().toString(36).substring(2, 12);
+      localStorage.setItem('laptopguard_controller_id', cid);
+    }
+    const res = await api.authorizeController({
+      controller_id: cid,
+      controller_type: 'WEB_BROWSER',
+      display_name: 'Desktop Web Browser (' + (navigator.platform || 'Workstation') + ')',
+      verification_code_or_pin: pin
+    });
+    if (res.is_trusted) {
+      setIsControllerTrusted(true);
+      localStorage.setItem('laptopguard_controller_trusted', 'true');
+      setIsAuthorizeBrowserModalOpen(false);
+      await refreshAll();
+      return true;
+    }
+    return false;
+  };
+
+  const revokeController = async (controllerId: string) => {
+    await api.revokeController(controllerId);
+    await refreshAll();
+  };
+
   useEffect(() => {
     refreshAll();
     if (user && user.id) {
       realtimeHub.connect(user.id);
-    } else {
-      realtimeHub.connect('usr_owner_demo');
     }
 
     const unsubscribe = realtimeHub.subscribe((data) => {
@@ -201,38 +264,6 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
           return d;
         }));
-        setSelectedDevice(prev => {
-          if (prev && prev.id === data.device_id) {
-            return {
-              ...prev,
-              battery: data.battery,
-              is_charging: data.is_charging,
-              current_ssid: data.current_ssid,
-              last_seen: data.last_seen,
-              status: prev.status === 'Offline' ? 'Protected' : prev.status
-            };
-          }
-          return prev;
-        });
-      }
-
-      if (data.type === 'DEVICE_STATUS_CHANGED') {
-        setDevices(prev => prev.map(d => {
-          if (d.id === data.device_id) {
-            return { ...d, status: data.status as any };
-          }
-          return d;
-        }));
-        setSelectedDevice(prev => {
-          if (prev && prev.id === data.device_id) {
-            return { ...prev, status: data.status as any };
-          }
-          return prev;
-        });
-      }
-
-      if (data.type === 'DEVICE_CLAIMED') {
-        refreshAll();
       }
 
       if (data.type === 'ALARM_STATE_CHANGED') {
@@ -287,41 +318,64 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []);
 
+  const handleCommandWithPolicyCheck = async (fn: () => Promise<any>) => {
+    try {
+      await fn();
+    } catch (err: any) {
+      if (err?.message && (err.message.includes('CONTROLLER_NOT_TRUSTED') || err.message.includes('403'))) {
+        setIsAuthorizeBrowserModalOpen(true);
+      }
+      throw err;
+    }
+  };
+
   const armDevice = async (deviceId: string) => {
-    await api.dispatchCommand(deviceId, 'ARM_DEVICE');
-    setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      await api.dispatchCommand(deviceId, 'ARM_DEVICE');
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
+      refreshAll();
+    });
   };
 
   const disarmDevice = async (deviceId: string) => {
-    setIsAlarmActive(false);
-    await api.dispatchCommand(deviceId, 'DISARM_DEVICE');
-    setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Disarmed' } : d));
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      setIsAlarmActive(false);
+      await api.dispatchCommand(deviceId, 'DISARM_DEVICE');
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Disarmed' } : d));
+      refreshAll();
+    });
   };
 
   const lockDevice = async (deviceId: string) => {
-    await api.dispatchCommand(deviceId, 'LOCK_DEVICE');
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      await api.dispatchCommand(deviceId, 'LOCK_DEVICE');
+      refreshAll();
+    });
   };
 
   const unlockDevice = async (deviceId: string, pin?: string) => {
-    setIsAlarmActive(false);
-    await api.dispatchCommand(deviceId, 'UNLOCK_WORKSTATION', { pin });
-    setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      setIsAlarmActive(false);
+      await api.dispatchCommand(deviceId, 'UNLOCK_WORKSTATION', { pin });
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
+      refreshAll();
+    });
   };
 
   const soundAlarm = async (deviceId: string, volume: number = 40) => {
-    setIsAlarmActive(true);
-    await api.dispatchCommand(deviceId, 'PLAY_ALARM', { volume });
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      setIsAlarmActive(true);
+      await api.dispatchCommand(deviceId, 'PLAY_ALARM', { volume });
+      refreshAll();
+    });
   };
 
   const stopAlarm = async (deviceId: string) => {
-    setIsAlarmActive(false);
-    await api.dispatchCommand(deviceId, 'STOP_ALARM');
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      setIsAlarmActive(false);
+      await api.dispatchCommand(deviceId, 'STOP_ALARM');
+      refreshAll();
+    });
   };
 
   const toggleAlarm = async (deviceId: string) => {
@@ -333,27 +387,48 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const activateLostMode = async (deviceId: string, contactMessage?: string) => {
-    await api.dispatchCommand(deviceId, 'ENABLE_LOST_MODE', { contact_message: contactMessage });
-    setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Lost' } : d));
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      await api.dispatchCommand(deviceId, 'ENABLE_LOST_MODE', { contact_message: contactMessage });
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Lost' } : d));
+      refreshAll();
+    });
   };
 
   const deactivateLostMode = async (deviceId: string) => {
-    setIsAlarmActive(false);
-    await api.dispatchCommand(deviceId, 'DISABLE_LOST_MODE');
-    setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      setIsAlarmActive(false);
+      await api.dispatchCommand(deviceId, 'DISABLE_LOST_MODE');
+      setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'Protected' } : d));
+      refreshAll();
+    });
   };
 
   const requestLocation = async (deviceId: string) => {
-    await api.dispatchCommand(deviceId, 'REQUEST_LOCATION');
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      await api.dispatchCommand(deviceId, 'REQUEST_LOCATION');
+      refreshAll();
+    });
   };
 
   const takeSnapshot = async (deviceId: string) => {
-    await api.dispatchCommand(deviceId, 'TAKE_SECURITY_SNAPSHOT');
-    refreshAll();
+    await handleCommandWithPolicyCheck(async () => {
+      await api.dispatchCommand(deviceId, 'TAKE_PHOTO');
+      refreshAll();
+    });
   };
+
+  const removeDevice = async (deviceId: string) => {
+    await handleCommandWithPolicyCheck(async () => {
+      await api.removeDevice(deviceId);
+      setDevices(prev => prev.filter(d => d.id !== deviceId));
+      if (selectedDevice?.id === deviceId) {
+        setSelectedDevice(null);
+      }
+      refreshAll();
+    });
+  };
+
+  const dismissCriticalAlert = () => setCriticalAlert(null);
 
   return (
     <SecurityContext.Provider
@@ -368,6 +443,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleTheme,
         activeCameraSession,
         setActiveCameraSession,
+        
+        isControllerTrusted,
+        controllers,
+        isAuthorizeBrowserModalOpen,
+        setIsAuthorizeBrowserModalOpen,
+        authorizeThisBrowser,
+        revokeController,
+
         isLockModalOpen,
         setIsLockModalOpen,
         isAlarmModalOpen,
@@ -377,8 +460,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isPairingModalOpen,
         setIsPairingModalOpen,
         criticalAlert,
-        dismissCriticalAlert: () => setCriticalAlert(null),
+        dismissCriticalAlert,
         isAlarmActive,
+
+        user,
+        isAuthenticated,
+        loginUser,
+        logoutUser,
+
         armDevice,
         disarmDevice,
         lockDevice,
@@ -390,10 +479,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deactivateLostMode,
         requestLocation,
         takeSnapshot,
-        user,
-        isAuthenticated,
-        loginUser,
-        logoutUser,
+        removeDevice,
         refreshAll
       }}
     >
@@ -404,6 +490,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const useSecurity = () => {
   const context = useContext(SecurityContext);
-  if (!context) throw new Error('useSecurity must be used within SecurityProvider');
+  if (!context) {
+    throw new Error('useSecurity must be used within a SecurityProvider');
+  }
   return context;
 };

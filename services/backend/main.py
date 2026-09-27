@@ -21,6 +21,8 @@ from services.backend.routers import (
     notifications_router,
     downloads_router,
     screen_router,
+    pairing_router,
+    controllers_router,
 )
 from services.backend import models
 
@@ -51,6 +53,8 @@ app.add_middleware(
 # Mount API Routers
 app.include_router(auth_router.router, prefix=settings.API_V1_STR)
 app.include_router(devices_router.router, prefix=settings.API_V1_STR)
+app.include_router(pairing_router.router, prefix=settings.API_V1_STR)
+app.include_router(controllers_router.router, prefix=settings.API_V1_STR)
 app.include_router(commands_router.router, prefix=settings.API_V1_STR)
 app.include_router(events_router.router, prefix=settings.API_V1_STR)
 app.include_router(camera_router.router, prefix=settings.API_V1_STR)
@@ -75,7 +79,7 @@ def health_check():
 
 @app.on_event("startup")
 def on_startup():
-    """Ensure database has default demo owner and devices on fresh deployments."""
+    """Ensure database has default demo owner on fresh deployments."""
     try:
         from services.backend.auth import get_password_hash
         db: Session = next(get_db())
@@ -88,59 +92,12 @@ def on_startup():
                 full_name="Oska Perera",
                 role="owner",
                 two_factor_enabled=True,
+                two_factor_secret="6728",
                 created_at=models.datetime.datetime.utcnow()
             )
             db.add(user)
             db.commit()
             logger.info("Initialized default demo owner: oska@laptopguard.ai")
-
-        device = db.query(models.Device).filter(models.Device.id == "dev_oska_xps15").first()
-        if not device:
-            device = models.Device(
-                id="dev_oska_xps15",
-                user_id=user.id,
-                device_name="Dell G15 Sentinel",
-                device_type="laptop",
-                manufacturer="Dell Inc.",
-                model="G15 5530",
-                os="Windows",
-                os_version="11 Home",
-                agent_version="1.4.2",
-                device_public_key="ed25519_pk_default",
-                is_paired=True,
-                status="Protected",
-                security_mode="Balanced",
-                battery=100,
-                is_charging=True,
-                last_seen=models.datetime.datetime.utcnow()
-            )
-            db.add(device)
-            db.commit()
-            logger.info("Initialized default device: dev_oska_xps15")
-
-        oshadha_dev = db.query(models.Device).filter(models.Device.id == "dev_oshadhaperera_925a94").first()
-        if not oshadha_dev:
-            oshadha_dev = models.Device(
-                id="dev_oshadhaperera_925a94",
-                user_id=user.id,
-                device_name="OSHADHAPERERA",
-                device_type="laptop",
-                manufacturer="Windows PC",
-                model="Laptop Sentinel",
-                os="Windows",
-                os_version="11 Home",
-                agent_version="2.0.0",
-                device_public_key="ed25519_pk_oshadha",
-                is_paired=True,
-                status="Protected",
-                security_mode="Balanced",
-                battery=100,
-                is_charging=True,
-                last_seen=models.datetime.datetime.utcnow()
-            )
-            db.add(oshadha_dev)
-            db.commit()
-            logger.info("Initialized hardware device: dev_oshadhaperera_925a94")
     except Exception as e:
         logger.error(f"Startup seed error: {e}")
 
@@ -152,21 +109,18 @@ def on_startup():
 async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
     """Real-time bidirectional channel for Laptop Security Agents."""
     db: Session = next(get_db())
-    device = db.query(models.Device).filter(models.Device.id == device_id).first()
+    device = db.query(models.ProtectedDevice).filter(models.ProtectedDevice.id == device_id).first()
     if not device:
-        # Create unbound device record until owner logs in via the desktop app
-        device = models.Device(
+        # Create un-paired protected device record
+        device = models.ProtectedDevice(
             id=device_id,
-            user_id="unbound",
+            device_public_id=f"pub_{uuid.uuid4().hex[:12]}",
             device_name="Windows Sentinel Laptop",
-            device_type="laptop",
             manufacturer="Unknown",
             model="Laptop",
-            os="Windows",
             os_version="11",
-            agent_version="1.5.2",
+            agent_version="1.7.0",
             device_public_key="ed25519_pk_auto",
-            is_paired=False,
             status="Unpaired",
             security_mode="Balanced",
             battery=100,
@@ -176,9 +130,16 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
         db.add(device)
         db.commit()
         db.refresh(device)
-        logger.info(f"Registered new hardware device {device_id} (awaiting owner sign-in)")
+        logger.info(f"Registered new hardware device {device_id} (Unpaired)")
 
-    await hub.register_device(device_id, device.user_id or "unbound", websocket)
+    # Find active owner via DeviceOwnership
+    ownership = db.query(models.DeviceOwnership).filter(
+        models.DeviceOwnership.device_id == device_id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).first()
+    active_user_id = ownership.user_id if ownership else None
+
+    await hub.register_device(device_id, active_user_id or "unbound", websocket)
     try:
         while True:
             data_text = await websocket.receive_text()
@@ -186,31 +147,14 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                 msg = json.loads(data_text)
                 msg_type = msg.get("type")
                 
-                target_user_id = hub.device_user_map.get(device_id, device.user_id)
+                # Check current owner dynamically
+                current_ownership = db.query(models.DeviceOwnership).filter(
+                    models.DeviceOwnership.device_id == device_id,
+                    models.DeviceOwnership.revoked_at.is_(None)
+                ).first()
+                target_user_id = current_ownership.user_id if current_ownership else None
 
-                if msg_type == "CLAIM_DEVICE":
-                    token = msg.get("token")
-                    if token:
-                        try:
-                            from services.backend.auth import decode_access_token
-                            payload = decode_access_token(token)
-                            new_uid = payload.get("sub")
-                            if new_uid:
-                                device.user_id = new_uid
-                                db.commit()
-                                hub.device_user_map[device_id] = new_uid
-                                target_user_id = new_uid
-                                logger.info(f"Device {device_id} successfully bound to user {new_uid}")
-                                await hub.broadcast_to_user(new_uid, {
-                                    "type": "DEVICE_STATUS_CHANGED",
-                                    "device_id": device_id,
-                                    "status": "Protected",
-                                    "is_online": True
-                                })
-                        except Exception as ex:
-                            logger.warning(f"Failed to claim device via WebSocket: {ex}")
-
-                elif msg_type == "HEARTBEAT":
+                if msg_type == "HEARTBEAT":
                     # Update device battery, charging state, wifi, and last seen
                     device.battery = msg.get("battery", device.battery)
                     device.is_charging = msg.get("is_charging", device.is_charging)
@@ -219,18 +163,17 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                     device.last_seen = models.datetime.datetime.utcnow()
                     db.commit()
                     
-                    # Notify connected user dashboard
-                    await hub.broadcast_to_user(target_user_id, {
-                        "type": "DEVICE_TELEMETRY_UPDATED",
-                        "device_id": device_id,
-                        "battery": device.battery,
-                        "is_charging": device.is_charging,
-                        "current_ssid": device.current_ssid,
-                        "last_seen": device.last_seen.isoformat()
-                    })
+                    if target_user_id:
+                        await hub.broadcast_to_user(target_user_id, {
+                            "type": "DEVICE_TELEMETRY_UPDATED",
+                            "device_id": device_id,
+                            "battery": device.battery,
+                            "is_charging": device.is_charging,
+                            "current_ssid": device.current_ssid,
+                            "last_seen": device.last_seen.isoformat()
+                        })
 
                 elif msg_type == "COMMAND_RESULT":
-                    # Device agent reporting command execution status
                     cmd_id = msg.get("command_id")
                     status_str = msg.get("status", "EXECUTED")
                     cmd = db.query(models.DeviceCommand).filter(models.DeviceCommand.command_id == cmd_id).first()
@@ -239,27 +182,29 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                         cmd.executed_at = models.datetime.datetime.utcnow()
                         db.commit()
                         
-                    await hub.broadcast_to_user(target_user_id, {
-                        "type": "COMMAND_RESULT",
-                        "device_id": device_id,
-                        "command_id": cmd_id,
-                        "status": status_str
-                    })
+                    if target_user_id:
+                        await hub.broadcast_to_user(target_user_id, {
+                            "type": "COMMAND_RESULT",
+                            "device_id": device_id,
+                            "command_id": cmd_id,
+                            "status": status_str
+                        })
 
                 elif msg_type == "WEBRTC_SIGNAL":
-                    # Relay WebRTC SDP answer / ICE candidates to user dashboard
-                    await hub.relay_webrtc_signaling("user", target_user_id, {
-                        "device_id": device_id,
-                        "signal": msg.get("signal")
-                    })
+                    if target_user_id:
+                        await hub.relay_webrtc_signaling("user", target_user_id, {
+                            "device_id": device_id,
+                            "signal": msg.get("signal")
+                        })
 
                 elif msg_type == "ALARM_STATE":
                     is_active = msg.get("is_alarm_active", False)
-                    await hub.broadcast_to_user(target_user_id, {
-                        "type": "ALARM_STATE_CHANGED",
-                        "device_id": device_id,
-                        "is_alarm_active": is_active
-                    })
+                    if target_user_id:
+                        await hub.broadcast_to_user(target_user_id, {
+                            "type": "ALARM_STATE_CHANGED",
+                            "device_id": device_id,
+                            "is_alarm_active": is_active
+                        })
 
                 elif msg_type == "SECURITY_EVENT":
                     event_data = msg.get("data", {})
@@ -268,13 +213,11 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                     desc = event_data.get("description", "Security Event")
                     meta = event_data.get("metadata", {})
 
-                    # Update device status if armed or disarmed
                     if ev_type == "ARMED":
                         device.status = "Protected"
                     elif ev_type == "DISARMED":
                         device.status = "Disarmed"
 
-                    # Save to database
                     db_event = models.SecurityEvent(
                         id=f"evt_{uuid.uuid4().hex[:10]}",
                         device_id=device_id,
@@ -286,12 +229,11 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                     )
                     db.add(db_event)
 
-                    # Create alert notification if warning or critical
                     notif = None
-                    if severity in ("CRITICAL", "WARNING"):
+                    if target_user_id and severity in ("CRITICAL", "WARNING"):
                         notif = models.Notification(
                             id=f"notif_{uuid.uuid4().hex[:10]}",
-                            user_id=device.user_id,
+                            user_id=target_user_id,
                             device_id=device_id,
                             title=f"Security Alert: {ev_type}",
                             body=desc,
@@ -304,41 +246,41 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
 
                     db.commit()
 
-                    # Notify user web dashboard & mobile app
-                    await hub.broadcast_to_user(device.user_id, {
-                        "type": "NEW_SECURITY_EVENT",
-                        "device_id": device_id,
-                        "event": {
-                            "id": db_event.id,
+                    if target_user_id:
+                        await hub.broadcast_to_user(target_user_id, {
+                            "type": "NEW_SECURITY_EVENT",
                             "device_id": device_id,
-                            "event_type": ev_type,
-                            "severity": severity,
-                            "description": desc,
-                            "created_at": db_event.created_at.isoformat(),
-                            "metadata": meta
-                        },
-                        "notification": {
-                            "id": notif.id,
-                            "title": notif.title,
-                            "body": notif.body,
-                            "severity": notif.category,
-                            "created_at": notif.created_at.isoformat()
-                        } if notif else None
-                    })
-
-                    if ev_type in ("ARMED", "DISARMED"):
-                        await hub.broadcast_to_user(device.user_id, {
-                            "type": "DEVICE_STATUS_CHANGED",
-                            "device_id": device_id,
-                            "status": device.status
+                            "event": {
+                                "id": db_event.id,
+                                "device_id": device_id,
+                                "event_type": ev_type,
+                                "severity": severity,
+                                "description": desc,
+                                "created_at": db_event.created_at.isoformat(),
+                                "metadata": meta
+                            },
+                            "notification": {
+                                "id": notif.id,
+                                "title": notif.title,
+                                "body": notif.body,
+                                "severity": notif.category,
+                                "created_at": notif.created_at.isoformat()
+                            } if notif else None
                         })
+
+                        if ev_type in ("ARMED", "DISARMED"):
+                            await hub.broadcast_to_user(target_user_id, {
+                                "type": "DEVICE_STATUS_CHANGED",
+                                "device_id": device_id,
+                                "status": device.status
+                            })
 
             except json.JSONDecodeError:
                 logger.warning(f"Invalid JSON from device {device_id}")
 
     except WebSocketDisconnect:
         user_id = hub.unregister_device(device_id)
-        if user_id:
+        if user_id and user_id != "unbound":
             await hub.broadcast_to_user(user_id, {
                 "type": "DEVICE_STATUS_CHANGED",
                 "device_id": device_id,

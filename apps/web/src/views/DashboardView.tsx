@@ -23,7 +23,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { devices, selectedDevice, events, user, isAlarmActive } = useSecurity();
+  const { devices, selectedDevice, events, user, isAlarmActive, setIsPairingModalOpen } = useSecurity();
 
   // Metric counts
   const protectedCount = devices.filter(d => d.status === 'Protected').length;
@@ -195,8 +195,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           />
         </div>
       ) : (
-        <div className="ios-jelly-card p-10 text-center text-slate-500">
-          No paired devices available. Click "Pair New Device" in the sidebar to link your laptop.
+        <div className="ios-jelly-card p-8 sm:p-12 text-center max-w-xl mx-auto space-y-4 shadow-sm border border-slate-200/80">
+          <div className="bubble-icon w-14 h-14 bubble-blue mx-auto flex items-center justify-center shadow-sm">
+            <ShieldCheck className="w-7 h-7 text-blue-600" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base sm:text-lg font-black text-slate-900">Add Protected Laptop</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              No hardware laptops are linked to your account yet. Launch <strong>LaptopGuard Windows Sentinel</strong> on your laptop to generate an 8-character single-use pairing code.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => setIsPairingModalOpen(true)}
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-blue-500/25 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-2"
+            >
+              <span>Pair Laptop Now (Enter Code)</span>
+            </button>
+          </div>
         </div>
       )}
 

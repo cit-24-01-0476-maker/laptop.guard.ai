@@ -14,6 +14,8 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: str
     password: str
+    controller_name: Optional[str] = None
+    controller_type: Optional[str] = "WEB_BROWSER"
 
 class UserResponse(UserBase):
     id: str
@@ -26,19 +28,21 @@ class UserResponse(UserBase):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    controller_id: Optional[str] = None
+    is_controller_trusted: bool = False
     user: Dict[str, Any]
 
 # Device Schemas
 class DeviceBase(BaseModel):
     device_name: str
-    device_type: str = "laptop"
     manufacturer: Optional[str] = None
     model: Optional[str] = None
-    os: str = "Windows"
     os_version: Optional[str] = None
-    agent_version: str = "1.0.0"
+    agent_version: str = "1.7.0"
 
 class DeviceCreate(DeviceBase):
+    id: Optional[str] = None
+    device_public_id: Optional[str] = None
     device_public_key: Optional[str] = None
 
 class DeviceUpdate(BaseModel):
@@ -56,30 +60,96 @@ class DeviceLocationSchema(BaseModel):
     latitude: float
     longitude: float
     accuracy_meters: float
-    method: str
+    source: str
     city: Optional[str] = None
     region: Optional[str] = None
     country: Optional[str] = None
-    recorded_at: datetime
+    captured_at: datetime
     class Config:
         from_attributes = True
 
 class DeviceResponse(DeviceBase):
     id: str
-    user_id: str
-    device_public_key: Optional[str] = None
-    is_paired: bool
+    device_public_id: str
     status: str
-    security_mode: str
-    battery: int
-    is_charging: bool
+    security_mode: str = "Balanced"
+    battery: int = 100
+    is_charging: bool = True
     current_ssid: Optional[str] = None
     ip_address: Optional[str] = None
     last_seen: datetime
     created_at: datetime
+    role: str = "OWNER"
+    is_owner: bool = True
     last_location: Optional[DeviceLocationSchema] = None
     class Config:
         from_attributes = True
+
+# Pairing Schemas
+class PairingRequestCreate(BaseModel):
+    device_id: str
+    device_public_key: str
+    device_name: str
+    manufacturer: Optional[str] = "Dell"
+    model: Optional[str] = "G15 5530"
+    os_version: Optional[str] = "Windows 11 Pro"
+    agent_version: Optional[str] = "1.7.0"
+
+class PairingRequestResponse(BaseModel):
+    pairing_request_id: str
+    device_id: str
+    pairing_code: str # e.g. LG-7K4M-P92Q
+    qr_payload: str
+    expires_in_seconds: int = 300
+    expires_at: datetime
+    status: str = "PENDING"
+
+class PairingClaimRequest(BaseModel):
+    pairing_code: str
+    controller_name: Optional[str] = None
+    controller_type: Optional[str] = "WEB_BROWSER"
+
+class PairingClaimResponse(BaseModel):
+    pairing_request_id: str
+    device_id: str
+    device_name: str
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    os_version: Optional[str] = None
+    status: str = "CLAIMED"
+    expires_in_seconds: int
+
+class PairingConfirmRequest(BaseModel):
+    pairing_request_id: str
+    device_id: str
+    approved: bool = True
+    device_signature: Optional[str] = None
+
+class PairingStatusResponse(BaseModel):
+    pairing_request_id: str
+    status: str # PENDING, CLAIMED, CONFIRMED, DENIED, EXPIRED, CONSUMED
+    claimed_by_email: Optional[str] = None # Masked e.g. os***@example.com
+    claimed_by_user_id: Optional[str] = None
+    expires_in_seconds: int
+
+# Trusted Controller Schemas
+class TrustedControllerResponse(BaseModel):
+    id: str
+    user_id: str
+    controller_type: str
+    display_name: str
+    is_trusted: bool = True
+    created_at: datetime
+    last_used_at: datetime
+    revoked_at: Optional[datetime] = None
+    class Config:
+        from_attributes = True
+
+class ControllerAuthorizeRequest(BaseModel):
+    controller_id: Optional[str] = None
+    display_name: Optional[str] = None
+    controller_type: Optional[str] = "WEB_BROWSER"
+    verification_code_or_pin: str
 
 # Security Event Schemas
 class SecurityEventCreate(BaseModel):
@@ -98,8 +168,6 @@ class SecurityEventResponse(BaseModel):
     severity: str
     description: str
     metadata_json: Optional[str] = "{}"
-    location_id: Optional[str] = None
-    evidence_id: Optional[str] = None
     created_at: datetime
     class Config:
         from_attributes = True
@@ -107,8 +175,6 @@ class SecurityEventResponse(BaseModel):
 # Notification Schemas
 class NotificationResponse(BaseModel):
     id: str
-    user_id: str
-    device_id: Optional[str] = None
     title: str
     body: str
     category: str
@@ -121,7 +187,9 @@ class NotificationResponse(BaseModel):
 # Command Schemas
 class CommandCreateRequest(BaseModel):
     command_type: str
+    device_id: Optional[str] = None
     payload: Optional[Dict[str, Any]] = None
+    parameters: Optional[Dict[str, Any]] = None
 
 class CommandResponse(BaseModel):
     id: str
@@ -130,30 +198,23 @@ class CommandResponse(BaseModel):
     command_type: str
     status: str
     nonce: str
-    payload_json: str
-    signature: Optional[str] = None
     created_at: datetime
     expires_at: datetime
-    executed_at: Optional[datetime] = None
+    signature: Optional[str] = None
     class Config:
         from_attributes = True
 
-# Camera Session Schemas
+# Camera Schemas
 class CameraSessionStartRequest(BaseModel):
     device_id: str
+    reason: Optional[str] = "Security Check"
 
 class CameraSessionResponse(BaseModel):
-    id: str
     session_id: str
     device_id: str
-    user_id: str
     status: str
-    started_at: datetime
     expires_at: datetime
-    duration: int
-    ice_servers: List[Dict[str, str]]
-    class Config:
-        from_attributes = True
+    ice_servers: List[Dict[str, Any]]
 
 # Evidence Schemas
 class EvidenceResponse(BaseModel):
@@ -161,35 +222,19 @@ class EvidenceResponse(BaseModel):
     device_id: str
     file_type: str
     file_name: str
-    file_path: str
     file_size: int
     trigger_event: Optional[str] = None
-    retention_days: int
-    is_encrypted: bool
-    expires_at: Optional[datetime] = None
     created_at: datetime
     class Config:
         from_attributes = True
 
-# Settings Schemas
-class SecuritySettingsUpdate(BaseModel):
-    movement_detection: Optional[bool] = None
-    network_change_alert: Optional[bool] = None
-    power_disconnect_alert: Optional[bool] = None
-    failed_login_alert: Optional[bool] = None
-    location_updates: Optional[bool] = None
-    security_level: Optional[str] = None
-    auto_snapshot_on_alarm: Optional[bool] = None
-
-class SecuritySettingsResponse(BaseModel):
+# Audit Log Schema
+class AuditLogResponse(BaseModel):
     id: str
-    device_id: str
-    movement_detection: bool
-    network_change_alert: bool
-    power_disconnect_alert: bool
-    failed_login_alert: bool
-    location_updates: bool
-    security_level: str
-    auto_snapshot_on_alarm: bool
+    action: str
+    device_id: Optional[str] = None
+    details_json: Optional[str] = "{}"
+    ip_address: Optional[str] = None
+    timestamp: datetime
     class Config:
         from_attributes = True

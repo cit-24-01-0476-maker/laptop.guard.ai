@@ -13,7 +13,14 @@ router = APIRouter(prefix="/privacy", tags=["Privacy Center"])
 
 @router.get("/status/{device_id}")
 def get_privacy_status(device_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    device = db.query(models.Device).filter(models.Device.id == device_id, models.Device.user_id == current_user.id).first()
+    device = db.query(models.ProtectedDevice).join(
+        models.DeviceOwnership,
+        models.ProtectedDevice.id == models.DeviceOwnership.device_id
+    ).filter(
+        models.ProtectedDevice.id == device_id,
+        models.DeviceOwnership.user_id == current_user.id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
         
@@ -36,7 +43,14 @@ def get_privacy_status(device_id: str, db: Session = Depends(get_db), current_us
 
 @router.post("/delete-all-evidence/{device_id}")
 def delete_all_evidence(device_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    device = db.query(models.Device).filter(models.Device.id == device_id, models.Device.user_id == current_user.id).first()
+    device = db.query(models.ProtectedDevice).join(
+        models.DeviceOwnership,
+        models.ProtectedDevice.id == models.DeviceOwnership.device_id
+    ).filter(
+        models.ProtectedDevice.id == device_id,
+        models.DeviceOwnership.user_id == current_user.id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
         
@@ -72,8 +86,20 @@ def get_audit_trail(db: Session = Depends(get_db), current_user: models.User = D
 @router.get("/export-data")
 def export_user_data(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Full data export for GDPR / Privacy compliance."""
-    devices = db.query(models.Device).filter(models.Device.user_id == current_user.id).all()
-    events = db.query(models.SecurityEvent).join(models.Device).filter(models.Device.user_id == current_user.id).all()
+    devices = db.query(models.ProtectedDevice).join(
+        models.DeviceOwnership,
+        models.ProtectedDevice.id == models.DeviceOwnership.device_id
+    ).filter(
+        models.DeviceOwnership.user_id == current_user.id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).all()
+    events = db.query(models.SecurityEvent).join(
+        models.DeviceOwnership,
+        models.SecurityEvent.device_id == models.DeviceOwnership.device_id
+    ).filter(
+        models.DeviceOwnership.user_id == current_user.id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).all()
     audit_logs = db.query(models.AuditLog).filter(models.AuditLog.user_id == current_user.id).all()
     
     return {

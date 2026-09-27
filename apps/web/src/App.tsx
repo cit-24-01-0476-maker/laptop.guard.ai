@@ -23,6 +23,7 @@ import { AlarmTriggerModal } from './components/Modals/AlarmTriggerModal';
 import { LostModeModal } from './components/Modals/LostModeModal';
 import { CriticalAlertModal } from './components/Modals/CriticalAlertModal';
 import { PairingModal } from './components/Modals/PairingModal';
+import { AuthorizeBrowserModal } from './components/Modals/AuthorizeBrowserModal';
 import { AuthModal } from './components/Modals/AuthModal';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
 import { IntroVideoModal } from './components/IntroVideoModal';
@@ -53,7 +54,7 @@ const checkIsAppMode = (): boolean => {
 };
 
 export const AppContent: React.FC = () => {
-  const { user, isAuthenticated, logoutUser, refreshAll } = useSecurity();
+  const { user, isAuthenticated, logoutUser, refreshAll, isControllerTrusted, setIsAuthorizeBrowserModalOpen } = useSecurity();
   const [isAppMode, setIsAppMode] = useState<boolean>(checkIsAppMode);
   
   // Track device/viewport mode dynamically
@@ -291,6 +292,24 @@ export const AppContent: React.FC = () => {
         />
       </div>
 
+      {/* Untrusted Browser Security Warning Banner */}
+      {isAuthenticated && !isControllerTrusted && currentView !== 'landing' && (
+        <div className="mx-3 sm:mx-4 lg:mx-6 xl:mx-8 mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping flex-shrink-0" />
+            <p className="font-medium">
+              <strong className="font-extrabold">Untrusted Controller Session:</strong> This browser is in read-only observation mode. Remote security commands (Lock, Siren, Arm) require Step-Up Authorization.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsAuthorizeBrowserModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold flex-shrink-0 cursor-pointer shadow-sm active:scale-95 transition-all text-[11px]"
+          >
+            Authorize This Browser Now
+          </button>
+        </div>
+      )}
+
       {/* Main Floating Layout Container */}
       <div className="flex-1 flex w-full px-3 sm:px-4 lg:px-6 xl:px-8 pb-6 gap-5 z-10 max-w-[1920px] mx-auto">
         <Sidebar currentView={currentView} onNavigate={(view) => setCurrentView(view)} />
@@ -310,6 +329,7 @@ export const AppContent: React.FC = () => {
         onOpenLiveCamera={() => setCurrentView('camera')}
       />
       <PairingModal />
+      <AuthorizeBrowserModal />
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

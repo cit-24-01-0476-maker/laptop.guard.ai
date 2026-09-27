@@ -35,24 +35,47 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ onSelectDevice }) => {
         </button>
       </div>
 
-      {/* Grid of Devices */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {devices.map((device) => (
-          <div
-            key={device.id}
-            className="cursor-pointer"
-            onClick={() => {
-              setSelectedDevice(device);
-              onSelectDevice(device.id);
-            }}
-          >
-            <DeviceCard
-              device={device}
-              isPrimary={selectedDevice?.id === device.id}
-            />
+      {/* Grid of Devices or Empty State */}
+      {devices.length === 0 ? (
+        <div className="ios-jelly-card p-10 sm:p-14 text-center max-w-xl mx-auto space-y-4 shadow-sm border border-slate-200/80">
+          <div className="bubble-icon w-16 h-16 bubble-blue mx-auto flex items-center justify-center shadow-sm">
+            <ShieldCheck className="w-8 h-8 text-blue-600" />
           </div>
-        ))}
-      </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">No Protected Laptops Added Yet</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+              Your account has zero linked devices. To protect a laptop, download and install <strong>LaptopGuard Windows Sentinel</strong>, click <strong>Generate Pairing Code</strong>, and claim it here.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => setIsPairingModalOpen(true)}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Enter 8-Digit Pairing Code</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {devices.map((device) => (
+            <div
+              key={device.id}
+              className="cursor-pointer"
+              onClick={() => {
+                setSelectedDevice(device);
+                onSelectDevice(device.id);
+              }}
+            >
+              <DeviceCard
+                device={device}
+                isPrimary={selectedDevice?.id === device.id}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

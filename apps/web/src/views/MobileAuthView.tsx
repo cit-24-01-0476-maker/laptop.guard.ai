@@ -44,7 +44,7 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
         localStorage.setItem('laptopguard_last_email', cleanEmail);
         localStorage.setItem('laptopguard_secret_pin', pinToSave);
         sessionStorage.setItem('laptopguard_master_unlocked', 'true');
-        loginUser(res.user, res.access_token);
+        loginUser(res.user, res.access_token, res.controller_id, res.is_controller_trusted);
         onSuccess();
       }
     } catch (err: any) {
