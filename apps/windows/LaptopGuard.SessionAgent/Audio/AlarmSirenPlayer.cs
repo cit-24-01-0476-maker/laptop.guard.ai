@@ -19,7 +19,7 @@ namespace LaptopGuard.SessionAgent.Audio
             get { lock (_lock) return _isPlaying; }
         }
 
-        public void PlaySiren(string? customWavPath = null)
+        public void PlaySiren(string? customWavPath = null, int volumePercent = 40)
         {
             lock (_lock)
             {
@@ -32,15 +32,15 @@ namespace LaptopGuard.SessionAgent.Audio
                     {
                         _player = new SoundPlayer(customWavPath);
                         _player.PlayLooping();
-                        Console.WriteLine("[AUDIO] Playing custom siren audio in loop.");
+                        Console.WriteLine($"[AUDIO] Playing custom siren audio in loop at volume {volumePercent}%.");
                         return;
                     }
 
-                    // Fallback to embedded synthesized high-urgency alternating siren WAV
-                    _sirenStream = GenerateSirenWavStream(durationSeconds: 3);
+                    // Fallback to embedded synthesized alternating siren WAV with user-configured volume (default 40%)
+                    _sirenStream = GenerateSirenWavStream(durationSeconds: 3, volumePercent: volumePercent);
                     _player = new SoundPlayer(_sirenStream);
                     _player.PlayLooping();
-                    Console.WriteLine("[AUDIO] Playing synthesized emergency siren in loop.");
+                    Console.WriteLine($"[AUDIO] Playing synthesized emergency siren in loop at {volumePercent}% volume.");
                 }
                 catch (Exception ex)
                 {
@@ -106,7 +106,7 @@ namespace LaptopGuard.SessionAgent.Audio
         /// Generates a valid in-memory PCM 16-bit 44.1kHz WAV stream with alternating two-tone siren.
         /// Zero external dependencies required.
         /// </summary>
-        private static MemoryStream GenerateSirenWavStream(int durationSeconds = 3)
+        private static MemoryStream GenerateSirenWavStream(int durationSeconds = 3, int volumePercent = 40)
         {
             int sampleRate = 44100;
             short bitsPerSample = 16;
@@ -136,6 +136,9 @@ namespace LaptopGuard.SessionAgent.Audio
             writer.Write("data"u8.ToArray());
             writer.Write(dataLength);
 
+            // Calculate scaled amplitude from user volume (default 40%, capped between 5% and 100%)
+            double amplitude = (Math.Clamp(volumePercent, 5, 100) / 100.0) * 30000.0;
+
             // Siren frequencies: sweep between 750 Hz and 1350 Hz
             for (int i = 0; i < totalSamples; i++)
             {
@@ -144,7 +147,7 @@ namespace LaptopGuard.SessionAgent.Audio
                 double mod = Math.Sin(2.0 * Math.PI * 2.0 * t);
                 double freq = 1050.0 + (300.0 * mod);
                 double angle = 2.0 * Math.PI * freq * t;
-                short sample = (short)(Math.Sin(angle) * 28000); // 85% full scale volume
+                short sample = (short)(Math.Sin(angle) * amplitude);
                 writer.Write(sample);
             }
 

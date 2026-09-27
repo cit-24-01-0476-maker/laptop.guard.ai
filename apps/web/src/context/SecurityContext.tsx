@@ -39,7 +39,7 @@ interface SecurityContextType {
   disarmDevice: (deviceId: string) => Promise<void>;
   lockDevice: (deviceId: string) => Promise<void>;
   unlockDevice: (deviceId: string, pin?: string) => Promise<void>;
-  soundAlarm: (deviceId: string) => Promise<void>;
+  soundAlarm: (deviceId: string, volume?: number) => Promise<void>;
   stopAlarm: (deviceId: string) => Promise<void>;
   toggleAlarm: (deviceId: string) => Promise<void>;
   activateLostMode: (deviceId: string, contactMessage?: string) => Promise<void>;
@@ -312,9 +312,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshAll();
   };
 
-  const soundAlarm = async (deviceId: string) => {
+  const soundAlarm = async (deviceId: string, volume: number = 40) => {
     setIsAlarmActive(true);
-    await api.dispatchCommand(deviceId, 'PLAY_ALARM');
+    await api.dispatchCommand(deviceId, 'PLAY_ALARM', { volume });
     refreshAll();
   };
 

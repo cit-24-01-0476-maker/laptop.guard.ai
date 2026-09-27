@@ -82,7 +82,7 @@ namespace LaptopGuard.SessionAgent.Camera
         private async Task StreamLoopAsync(string deviceId, string cloudBaseUrl, CancellationToken token)
         {
             using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-            string frameUrl = $"{cloudBaseUrl.TrimEnd('/')}/api/camera/frame/{deviceId}";
+            string frameUrl = $"{cloudBaseUrl.TrimEnd('/')}/api/v1/camera/frame/{deviceId}";
 
             while (!token.IsCancellationRequested)
             {

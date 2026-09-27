@@ -30,12 +30,15 @@ import {
   Navigation,
   Play,
   QrCode,
-  Globe
+  Globe,
+  Sliders,
+  Sparkles
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
 import { BrandLogo } from '../components/BrandLogo';
 import { QRScannerModal } from '../components/Modals/QRScannerModal';
+import { Laptop3DModel } from '../components/Laptop3DModel';
 
 interface MobileViewProps {
   onBackToLanding: () => void;
@@ -82,12 +85,47 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState<boolean>(false);
   const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
 
+  // 3D Hardware Model View Mode ('cards' | '3d')
+  const [dashboardViewMode, setDashboardViewMode] = useState<'cards' | '3d'>('cards');
+
+  // Alarm Siren Volume (Default: 40%, gentle & safe, not 100%)
+  const [alarmVolume, setAlarmVolume] = useState<number>(() => {
+    return Number(localStorage.getItem('laptopguard_siren_volume')) || 40;
+  });
+
   // Proximity & Geolocation (Calculates distance between phone and laptop)
   const [distanceInfo, setDistanceInfo] = useState<string>('Detecting proximity...');
+  const [phoneCoords, setPhoneCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isSyncingGps, setIsSyncingGps] = useState<boolean>(false);
 
   // Active Device (only real paired devices belonging to this user)
   const currentDev = selectedDevice || (devices.length > 0 ? devices[0] : null);
   const isArmed = currentDev ? (currentDev.status === 'Protected' || currentDev.status === 'Lost') : false;
+
+  // Sync real phone GPS coordinates to laptop cloud record
+  const syncPhoneGpsToLaptop = async (lat: number, lng: number, manual = false) => {
+    if (!currentDev?.id) return;
+    try {
+      if (manual) setIsSyncingGps(true);
+      await api.refreshLocation(currentDev.id, {
+        latitude: lat,
+        longitude: lng,
+        accuracy_meters: 15,
+        city: 'Colombo',
+        region: 'Western Province',
+        country: 'Sri Lanka',
+        method: 'phone_gps_sync'
+      });
+      if (manual) {
+        alert(`Real GPS location synced: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E!`);
+        refreshAll();
+      }
+    } catch (e) {
+      console.warn('GPS sync error:', e);
+    } finally {
+      if (manual) setIsSyncingGps(false);
+    }
+  };
 
   // Proximity Calculation (Phone GPS vs Laptop Location)
   useEffect(() => {
@@ -95,9 +133,10 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       const calcProximity = (pos: GeolocationPosition) => {
         const uLat = pos.coords.latitude;
         const uLng = pos.coords.longitude;
+        setPhoneCoords({ lat: uLat, lng: uLng });
 
-        const lLat = currentDev?.last_location?.latitude || 6.9271;
-        const lLng = currentDev?.last_location?.longitude || 79.8612;
+        const lLat = currentDev?.last_location?.latitude || uLat;
+        const lLng = currentDev?.last_location?.longitude || uLng;
 
         const R = 6371e3; // Earth radius in meters
         const phi1 = (uLat * Math.PI) / 180;
@@ -111,8 +150,8 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const meters = R * c;
 
-        if (meters < 40) {
-          setDistanceInfo('Same Location (Within 40m)');
+        if (meters < 30) {
+          setDistanceInfo('Same Location (Within 25m)');
         } else if (meters < 1000) {
           setDistanceInfo(`~${Math.round(meters)}m away from you`);
         } else {
@@ -121,8 +160,14 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       };
 
       navigator.geolocation.getCurrentPosition(
-        calcProximity,
-        () => setDistanceInfo('Near Colombo, Sri Lanka (~100m)'),
+        pos => {
+          calcProximity(pos);
+          // If laptop location is not yet set or default, auto-sync phone GPS
+          if (currentDev?.id && (!currentDev.last_location || (currentDev.last_location as any).method === 'default')) {
+            syncPhoneGpsToLaptop(pos.coords.latitude, pos.coords.longitude, false);
+          }
+        },
+        () => setDistanceInfo('Near Colombo, Sri Lanka (~50m)'),
         { enableHighAccuracy: true, timeout: 8000 }
       );
 
@@ -131,7 +176,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     } else {
       setDistanceInfo('Near Colombo, Sri Lanka');
     }
-  }, [currentDev?.last_location?.latitude, currentDev?.last_location?.longitude]);
+  }, [currentDev?.id, currentDev?.last_location?.latitude, currentDev?.last_location?.longitude]);
 
   // PWA Install prompt listener
   useEffect(() => {
@@ -358,6 +403,37 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               </div>
             ) : (
               <>
+                {/* View Switcher: Cards vs 3D Interactive Model */}
+                <div className="flex items-center justify-between p-1 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs">
+                  <button
+                    onClick={() => setDashboardViewMode('cards')}
+                    className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      dashboardViewMode === 'cards'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Sentinel Cards</span>
+                  </button>
+                  <button
+                    onClick={() => setDashboardViewMode('3d')}
+                    className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      dashboardViewMode === '3d'
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                    <span>3D Dell G15 Model</span>
+                  </button>
+                </div>
+
+                {/* 3D Hardware Model View */}
+                {dashboardViewMode === '3d' && (
+                  <Laptop3DModel device={currentDev} isArmed={isArmed} />
+                )}
+
                 {/* Live Laptop Device Card */}
                 <div className="ios-jelly-card p-3.5 sm:p-4 rounded-3xl shadow-sm min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-3">
@@ -516,7 +592,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                       if (isAlarmActive) {
                         stopAlarm(currentDev.id);
                       } else {
-                        soundAlarm(currentDev.id);
+                        soundAlarm(currentDev.id, alarmVolume);
                       }
                     }}
                     className={`p-3 sm:p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-1 ios-bubble-btn shadow-xs cursor-pointer min-w-0 ${
@@ -531,7 +607,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                     <span className="text-xs font-black truncate w-full text-center px-1">
                       {isAlarmActive ? `Stop (${sirenCountdown ?? 15}s)` : 'Sound Siren'}
                     </span>
-                    <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">15s Auto-Mute</span>
+                    <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">{alarmVolume}% Vol • 15s Mute</span>
                   </button>
 
                   {/* 2. Lock Workstation */}
@@ -573,6 +649,61 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                     <span className="text-xs font-black truncate w-full text-center px-1">Lost Mode</span>
                     <span className="text-[9px] opacity-75 font-medium truncate w-full text-center">High-Priority Alert</span>
                   </button>
+                </div>
+
+                {/* Siren Alarm Volume Controller Card */}
+                <div className="ios-jelly-card p-3 sm:p-3.5 rounded-3xl shadow-sm border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="bubble-icon w-7 h-7 bubble-rose shadow-xs flex items-center justify-center flex-shrink-0">
+                        <Volume2 className="w-3.5 h-3.5 text-rose-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Siren Alarm Volume</h4>
+                        <span className="text-[10px] text-slate-400">Gentle sound level (Default: 40%)</span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold text-[11px] border border-rose-200">
+                      {alarmVolume}%
+                    </span>
+                  </div>
+
+                  {/* Volume Slider */}
+                  <div className="px-1 py-1">
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="5"
+                      value={alarmVolume}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setAlarmVolume(v);
+                        localStorage.setItem('laptopguard_siren_volume', String(v));
+                      }}
+                      className="w-full accent-rose-600 cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none"
+                    />
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 mt-2">
+                    {[20, 40, 70, 100].map((vol) => (
+                      <button
+                        key={vol}
+                        onClick={() => {
+                          setAlarmVolume(vol);
+                          localStorage.setItem('laptopguard_siren_volume', String(vol));
+                        }}
+                        className={`py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                          alarmVolume === vol
+                            ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                            : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {vol === 40 ? '40% (Safe)' : `${vol}%`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -851,24 +982,46 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </div>
               </div>
 
-              {/* GPS Ping Refresh Button */}
-              <button
-                onClick={async () => {
-                  if (currentDev?.id) {
-                    try {
-                      await api.refreshLocation(currentDev.id);
-                      refreshAll();
-                      alert('GPS location telemetry refreshed from laptop!');
-                    } catch (e) {
-                      refreshAll();
+              {/* GPS Ping Refresh & Real Phone GPS Sync Buttons */}
+              <div className="space-y-2 mt-2.5">
+                <button
+                  onClick={() => {
+                    if (phoneCoords) {
+                      syncPhoneGpsToLaptop(phoneCoords.lat, phoneCoords.lng, true);
+                    } else if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+                      navigator.geolocation.getCurrentPosition(
+                        pos => syncPhoneGpsToLaptop(pos.coords.latitude, pos.coords.longitude, true),
+                        () => alert('Could not access Phone GPS. Please check location permissions on your phone.')
+                      );
+                    } else {
+                      alert('Phone GPS not available in this browser.');
                     }
-                  }
-                }}
-                className="mt-2.5 w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Refresh Live GPS Telemetry</span>
-              </button>
+                  }}
+                  disabled={isSyncingGps}
+                  className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-60"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>{isSyncingGps ? 'Syncing Real GPS...' : '📍 Sync Real Phone GPS to Laptop'}</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    if (currentDev?.id) {
+                      try {
+                        await api.refreshLocation(currentDev.id);
+                        refreshAll();
+                        alert('GPS location telemetry refreshed from laptop!');
+                      } catch (e) {
+                        refreshAll();
+                      }
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Refresh Live GPS Telemetry</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
