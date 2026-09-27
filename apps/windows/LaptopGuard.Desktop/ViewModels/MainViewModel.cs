@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using LaptopGuard.Core.Ipc;
 using LaptopGuard.Core.Models;
 using LaptopGuard.Core.Native;
+using LaptopGuard.Core.State;
 using LaptopGuard.Core.Storage;
 using LaptopGuard.Desktop.Services;
 
@@ -18,7 +19,10 @@ namespace LaptopGuard.Desktop.ViewModels
     {
         private readonly LocalDurableStore _store = new();
         private readonly NamedPipeIpcClient _ipcClient = new();
+        private readonly SecurityStateMachine _stateMachine = new();
         private DeviceIdentityManager? _identityManager;
+        private DispatcherTimer? _graceTimer;
+        private int _remainingGrace = 5;
 
         private DeviceSecurityState _currentState = DeviceSecurityState.Disarmed;
         private string _stateTitle = "DISARMED";
@@ -137,14 +141,39 @@ namespace LaptopGuard.Desktop.ViewModels
             var identity = await IdentityManager.GetOrCreateIdentityAsync();
             DeviceName = identity.DeviceName;
             DeviceId = identity.DeviceId;
+            _stateMachine.DeviceId = identity.DeviceId;
+
+            // Wire up internal autonomous state machine events
+            _stateMachine.OnIncidentTriggered += async (s, inc) =>
+            {
+                await _store.SaveIncidentAsync(inc);
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    RecentIncidents.Insert(0, inc);
+                    CurrentState = DeviceSecurityState.Triggered;
+                    Win32Native.LockWorkStation();
+                    try { System.Media.SystemSounds.Hand.Play(); } catch { }
+                });
+            };
 
             RefreshHardwareStatus();
             await RefreshIncidentsAsync();
 
-            var powerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            powerTimer.Tick += (s, e) => RefreshHardwareStatus();
+            // 500ms Power Watchdog (AC Tripwire)
+            var powerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            powerTimer.Tick += (s, e) =>
+            {
+                RefreshHardwareStatus();
+                var (hasAc, _) = Win32Native.QueryCurrentPower();
+                if (CurrentState == DeviceSecurityState.Armed && !hasAc)
+                {
+                    // AC Power Disconnected while Armed!
+                    _stateMachine.TriggerIncident("POWER_DISCONNECT", IncidentSeverity.Critical, "AC Power Disconnected", "AC power cable was unplugged while Armed");
+                }
+            };
             powerTimer.Start();
 
+            // Optional background IPC connection (if service is installed)
             _ipcClient.OnConnected += (s, e) =>
             {
                 System.Windows.Application.Current?.Dispatcher.Invoke(() =>
@@ -160,7 +189,7 @@ namespace LaptopGuard.Desktop.ViewModels
             };
 
             _ipcClient.OnMessageReceived += HandleIpcMessage;
-            _ipcClient.Start();
+            try { _ipcClient.Start(); } catch { }
         }
 
         public void RefreshHardwareStatus()
@@ -198,14 +227,58 @@ namespace LaptopGuard.Desktop.ViewModels
                 return;
             }
 
-            var cmd = IpcMessage.CreateCommand(IpcCommandType.ArmDevice, new { GraceSeconds = graceSeconds });
-            await _ipcClient.SendMessageAsync(cmd);
+            // Direct autonomous arming with live countdown
+            _remainingGrace = graceSeconds > 0 ? graceSeconds : 5;
+            CurrentState = DeviceSecurityState.ArmingGrace;
+            StateSubtitle = $"Grace countdown active. Arming in {_remainingGrace}s...";
+
+            _graceTimer?.Stop();
+            _graceTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _graceTimer.Tick += (s, e) =>
+            {
+                _remainingGrace--;
+                if (_remainingGrace <= 0)
+                {
+                    _graceTimer?.Stop();
+                    _graceTimer = null;
+                    _stateMachine.Arm(0);
+                    CurrentState = DeviceSecurityState.Armed;
+                }
+                else
+                {
+                    StateSubtitle = $"Grace countdown active. Arming in {_remainingGrace}s...";
+                }
+            };
+            _graceTimer.Start();
+
+            // Also forward over IPC if background service is active
+            try
+            {
+                if (IsIpcConnected)
+                {
+                    var cmd = IpcMessage.CreateCommand(IpcCommandType.ArmDevice, new { GraceSeconds = graceSeconds });
+                    await _ipcClient.SendMessageAsync(cmd);
+                }
+            }
+            catch { }
         }
 
         public async Task DisarmAsync()
         {
-            var cmd = IpcMessage.CreateCommand(IpcCommandType.DisarmDevice);
-            await _ipcClient.SendMessageAsync(cmd);
+            _graceTimer?.Stop();
+            _graceTimer = null;
+            _stateMachine.Disarm();
+            CurrentState = DeviceSecurityState.Disarmed;
+
+            try
+            {
+                if (IsIpcConnected)
+                {
+                    var cmd = IpcMessage.CreateCommand(IpcCommandType.DisarmDevice);
+                    await _ipcClient.SendMessageAsync(cmd);
+                }
+            }
+            catch { }
         }
 
         public void LockWorkstationNow()
