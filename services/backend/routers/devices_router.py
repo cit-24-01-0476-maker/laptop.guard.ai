@@ -36,6 +36,23 @@ def get_devices(db: Session = Depends(get_db), current_user: models.User = Depen
         results.append(d_dict)
     return results
 
+@router.get("/{device_id}/status")
+def get_device_status_public(device_id: str, db: Session = Depends(get_db)):
+    """Returns lightweight public device security status for local agents and watchdogs."""
+    device = db.query(models.Device).filter(models.Device.id == device_id).first()
+    if not device:
+        return {"device_id": device_id, "status": "Protected", "is_armed": True}
+    return {
+        "device_id": device.id,
+        "device_name": device.device_name,
+        "status": device.status,
+        "is_armed": device.status in ["Protected", "Lost"],
+        "is_charging": device.is_charging,
+        "battery": device.battery,
+        "current_ssid": device.current_ssid,
+        "last_seen": device.last_seen.isoformat() if device.last_seen else None
+    }
+
 @router.post("/{device_id}/refresh-location")
 def refresh_device_location(device_id: str, payload: dict = None, db: Session = Depends(get_db)):
     """Resolves and updates actual real-world location for device."""

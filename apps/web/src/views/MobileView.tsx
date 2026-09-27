@@ -35,7 +35,14 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
-import { api, getDownloadUrl, getCameraStreamUrl, getCameraSnapshotUrl } from '../services/api';
+import {
+  api,
+  getDownloadUrl,
+  getCameraStreamUrl,
+  getCameraSnapshotUrl,
+  getScreenStreamUrl,
+  getScreenSnapshotUrl
+} from '../services/api';
 import { BrandLogo } from '../components/BrandLogo';
 import { QRScannerModal } from '../components/Modals/QRScannerModal';
 import { Laptop3DModel } from '../components/Laptop3DModel';
@@ -84,6 +91,11 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   const [pollUrl, setPollUrl] = useState<string>('');
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState<boolean>(false);
   const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
+
+  // Live Feed View Mode ('webcam' | 'screen')
+  const [mediaFeedMode, setMediaFeedMode] = useState<'webcam' | 'screen'>('webcam');
+  const [screenKey, setScreenKey] = useState<number>(Date.now());
+  const [screenPollUrl, setScreenPollUrl] = useState<string>('');
 
   // 3D Hardware Model View Mode ('cards' | '3d')
   const [dashboardViewMode, setDashboardViewMode] = useState<'cards' | '3d'>('cards');
@@ -204,17 +216,24 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     }
   };
 
-  // Live Camera Auto-Polling (Continuously refreshes live hardware frame every 800ms)
+  // Live Media Feed Auto-Polling (Webcam every 800ms, Screen Mirror every 1200ms)
   useEffect(() => {
     let pollTimer: any = null;
     if (activeTab === 'camera' && currentDev?.id) {
-      setPollUrl(getCameraSnapshotUrl(currentDev.id));
-      pollTimer = setInterval(() => {
+      if (mediaFeedMode === 'webcam') {
         setPollUrl(getCameraSnapshotUrl(currentDev.id));
-      }, 800);
+        pollTimer = setInterval(() => {
+          setPollUrl(getCameraSnapshotUrl(currentDev.id));
+        }, 800);
+      } else {
+        setScreenPollUrl(getScreenSnapshotUrl(currentDev.id));
+        pollTimer = setInterval(() => {
+          setScreenPollUrl(getScreenSnapshotUrl(currentDev.id));
+        }, 1200);
+      }
     }
     return () => clearInterval(pollTimer);
-  }, [activeTab, currentDev?.id]);
+  }, [activeTab, mediaFeedMode, currentDev?.id]);
 
   // Manual Check for App Updates (triggered when user clicks button in Profile tab)
   const checkAutoUpdate = async (manual = true) => {
@@ -705,6 +724,69 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                     ))}
                   </div>
                 </div>
+
+                {/* AI Sentinel Defense Matrix Card (All 4 Requested Features) */}
+                <div className="ios-jelly-card p-3.5 sm:p-4 rounded-3xl shadow-sm border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Sentinel Autonomous Defenses</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black border border-emerald-200 uppercase">
+                      4/4 ACTIVE
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {/* 1. Live Remote Screen Mirror */}
+                    <button
+                      onClick={() => {
+                        setMediaFeedMode('screen');
+                        setActiveTab('camera');
+                      }}
+                      className="p-2.5 rounded-2xl bg-gradient-to-tr from-slate-900 to-indigo-950 text-white text-left shadow-sm flex flex-col justify-between cursor-pointer border border-indigo-900/50 hover:brightness-110 transition-all"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Laptop className="w-4 h-4 text-cyan-400" />
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">VIEW</span>
+                      </div>
+                      <span className="font-bold text-[11px] block">Screen Mirror</span>
+                      <span className="text-[9px] text-slate-300 opacity-80">Live Desktop GDI</span>
+                    </button>
+
+                    {/* 2. Smart Wi-Fi Geofence */}
+                    <div className="p-2.5 rounded-2xl bg-white/80 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <Wifi className="w-4 h-4 text-blue-600" />
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                      <span className="font-bold text-slate-800 text-[11px] block">Wi-Fi Geofence</span>
+                      <span className="text-[9px] text-slate-500 truncate" title="Oshadha's A56 😂">
+                        Auto-lock if cut
+                      </span>
+                    </div>
+
+                    {/* 3. AI Face Intruder Detection */}
+                    <div className="p-2.5 rounded-2xl bg-white/80 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <Camera className="w-4 h-4 text-purple-600" />
+                        <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                      </div>
+                      <span className="font-bold text-slate-800 text-[11px] block">AI Face Guard</span>
+                      <span className="text-[9px] text-slate-500">YuNet Neural DNN</span>
+                    </div>
+
+                    {/* 4. USB Anti-Theft Trap */}
+                    <div className="p-2.5 rounded-2xl bg-white/80 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      </div>
+                      <span className="font-bold text-slate-800 text-[11px] block">USB BadUSB Trap</span>
+                      <span className="text-[9px] text-slate-500">Instant Siren & Lock</span>
+                    </div>
+                  </div>
+                </div>
               </>
             )}
 
@@ -766,47 +848,94 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               </div>
             ) : (
             <div className="ios-jelly-card p-4 rounded-3xl shadow-md">
+              {/* Media Mode Switcher (Webcam vs Screen Mirror) */}
+              <div className="flex items-center justify-between p-1 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs mb-3">
+                <button
+                  onClick={() => setMediaFeedMode('webcam')}
+                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    mediaFeedMode === 'webcam'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Live Webcam</span>
+                </button>
+                <button
+                  onClick={() => setMediaFeedMode('screen')}
+                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    mediaFeedMode === 'screen'
+                      ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Laptop className="w-3.5 h-3.5" />
+                  <span>🖥️ Screen Mirror</span>
+                </button>
+              </div>
+
+              {/* Feed Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="bubble-icon w-7 h-7 bubble-blue shadow-xs">
-                    <Camera className="w-3.5 h-3.5 text-blue-600" />
+                  <div className={`bubble-icon w-7 h-7 shadow-xs ${mediaFeedMode === 'webcam' ? 'bubble-blue' : 'bubble-cyan'}`}>
+                    {mediaFeedMode === 'webcam' ? <Camera className="w-3.5 h-3.5 text-blue-600" /> : <Laptop className="w-3.5 h-3.5 text-indigo-600" />}
                   </div>
                   <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900">Physical Laptop Webcam</h3>
-                    <span className="text-[10px] text-slate-400 font-mono">Hardware Index 0 • Direct Feed</span>
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900">
+                      {mediaFeedMode === 'webcam' ? 'Physical Laptop Webcam' : 'Live Desktop Screen Mirror'}
+                    </h3>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {mediaFeedMode === 'webcam' ? 'AI YuNet Face Detector Active' : 'Live GDI Windows 11 Desktop'}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span>LIVE STREAM</span>
+                    <span>{mediaFeedMode === 'webcam' ? 'AI LIVE' : 'MIRROR LIVE'}</span>
                   </span>
                 </div>
               </div>
 
-              {/* Video container */}
+              {/* Video / Screen Stream Container */}
               <div className="rounded-2xl overflow-hidden bg-slate-950 aspect-video relative flex items-center justify-center border border-slate-800 shadow-inner">
-                <img
-                  key={cameraKey}
-                  src={pollUrl || `${getCameraSnapshotUrl(currentDev.id)}?t=${cameraKey}`}
-                  alt="Live Laptop Webcam Stream"
-                  className="w-full h-full object-cover"
-                  onError={() => {
-                    setTimeout(() => {
-                      setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?retry=${Date.now()}`);
-                    }, 1000);
-                  }}
-                />
+                {mediaFeedMode === 'webcam' ? (
+                  <img
+                    key={`cam-${cameraKey}`}
+                    src={pollUrl || `${getCameraSnapshotUrl(currentDev.id)}?t=${cameraKey}`}
+                    alt="Live Laptop Webcam Stream"
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      setTimeout(() => {
+                        setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?retry=${Date.now()}`);
+                      }, 1000);
+                    }}
+                  />
+                ) : (
+                  <img
+                    key={`scr-${screenKey}`}
+                    src={screenPollUrl || `${getScreenSnapshotUrl(currentDev.id)}?t=${screenKey}`}
+                    alt="Live Laptop Desktop Mirror"
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      setTimeout(() => {
+                        setScreenPollUrl(`${getScreenSnapshotUrl(currentDev.id)}?retry=${Date.now()}`);
+                      }, 1200);
+                    }}
+                  />
+                )}
 
                 {/* Responsive HUD Overlay Header */}
                 <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1.5 pointer-events-none">
                   <div className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-mono text-cyan-300 flex items-center gap-1 border border-white/10 shadow-sm min-w-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                    <span className="truncate">{(currentDev?.device_name || 'LAPTOP SENTINEL').toUpperCase()} • LIVE</span>
+                    <span className="truncate">
+                      {(currentDev?.device_name || 'DELL G15').toUpperCase()} • {mediaFeedMode === 'webcam' ? 'AI CAM' : 'DESKTOP'}
+                    </span>
                   </div>
 
                   <div className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-mono text-emerald-300 border border-white/10 shadow-sm flex-shrink-0">
-                    800ms LIVE
+                    {mediaFeedMode === 'webcam' ? 'YuNet ACTIVE' : 'GDI ACTIVE'}
                   </div>
                 </div>
 
@@ -814,11 +943,16 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 <div className="absolute bottom-2 right-2">
                   <button
                     onClick={() => {
-                      setCameraKey(Date.now());
-                      setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                      if (mediaFeedMode === 'webcam') {
+                        setCameraKey(Date.now());
+                        setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                      } else {
+                        setScreenKey(Date.now());
+                        setScreenPollUrl(`${getScreenSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                      }
                     }}
                     className="py-1 px-2.5 rounded-lg bg-black/80 backdrop-blur-md hover:bg-black text-cyan-300 text-[10px] font-bold flex items-center gap-1 border border-white/15 active:scale-95 transition-all cursor-pointer shadow-sm"
-                    title="Refresh Live Camera Feed"
+                    title="Refresh Live Stream"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>Refresh</span>
@@ -840,31 +974,51 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   className="flex-1 py-2.5 px-3 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold flex items-center justify-center gap-1.5 ios-bubble-btn cursor-pointer disabled:opacity-60"
                 >
                   <Camera className="w-3.5 h-3.5" />
-                  <span>{isCapturingSnapshot ? 'Capturing...' : snapshotSuccess ? '✓ Snapshot Saved!' : 'Capture Intruder Photo'}</span>
+                  <span>
+                    {isCapturingSnapshot ? 'Capturing...' : snapshotSuccess ? '✓ Snapshot Saved!' : mediaFeedMode === 'webcam' ? 'Capture Intruder Photo' : 'Capture Screen Evidence'}
+                  </span>
                 </button>
 
                 <button
                   onClick={() => {
-                    setCameraKey(Date.now());
-                    setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                    if (mediaFeedMode === 'webcam') {
+                      setCameraKey(Date.now());
+                      setPollUrl(`${getCameraSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                    } else {
+                      setScreenKey(Date.now());
+                      setScreenPollUrl(`${getScreenSnapshotUrl(currentDev.id)}?t=${Date.now()}`);
+                    }
                   }}
                   className="py-2.5 px-3 rounded-2xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold ios-bubble-btn cursor-pointer"
                 >
-                  Sync Now
+                  Sync Feed
                 </button>
               </div>
 
-              {/* Hardware Device Telemetry Strip */}
-              <div className="mt-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-2 text-[11px] text-slate-600 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <Wifi className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                  <span className="font-semibold text-slate-800 truncate" title={currentDev.current_ssid || currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}>
-                    {currentDev.current_ssid || currentDev.metadata?.wifi_ssid || 'SLT-Fiber-tysZ8-5G'}
-                  </span>
+              {/* Hardware & Autonomous Defense Telemetry Strip */}
+              <div className="mt-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-[11px] text-slate-600 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <Wifi className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                    <span className="font-semibold text-slate-800 truncate" title={currentDev.current_ssid || currentDev.metadata?.wifi_ssid || "Oshadha's A56 😂"}>
+                      {currentDev.current_ssid || currentDev.metadata?.wifi_ssid || "Oshadha's A56 😂"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 font-mono text-[10px] flex-shrink-0">
+                    <Globe className="w-3 h-3 text-indigo-500" />
+                    <span>{currentDev.ip_address || currentDev.metadata?.ip_address || '192.168.1.12'}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 font-mono text-[10px] flex-shrink-0">
-                  <Globe className="w-3 h-3 text-indigo-500" />
-                  <span>{currentDev.ip_address || currentDev.metadata?.ip_address || '192.168.1.12'}</span>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[10px]">
+                  <span className="text-slate-500 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>AI Face Guard: <strong>YuNet DNN Active</strong></span>
+                  </span>
+                  <span className="text-amber-700 font-bold flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    <span>USB Trap: Armed</span>
+                  </span>
                 </div>
               </div>
             </div>

@@ -62,6 +62,14 @@ export const getCameraSnapshotUrl = (deviceId: string): string => {
   return `${getApiBaseUrl()}/camera/snapshot/${deviceId}?t=${Date.now()}`;
 };
 
+export const getScreenStreamUrl = (deviceId: string): string => {
+  return `${getApiBaseUrl()}/screen/stream/${deviceId}`;
+};
+
+export const getScreenSnapshotUrl = (deviceId: string): string => {
+  return `${getApiBaseUrl()}/screen/snapshot/${deviceId}?t=${Date.now()}`;
+};
+
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
     const token = localStorage.getItem('laptopguard_token');

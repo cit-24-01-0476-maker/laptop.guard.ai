@@ -20,6 +20,7 @@ from services.backend.routers import (
     privacy_router,
     notifications_router,
     downloads_router,
+    screen_router,
 )
 from services.backend import models
 
@@ -54,6 +55,8 @@ app.include_router(commands_router.router, prefix=settings.API_V1_STR)
 app.include_router(events_router.router, prefix=settings.API_V1_STR)
 app.include_router(camera_router.router, prefix=settings.API_V1_STR)
 app.include_router(camera_router.router)
+app.include_router(screen_router.router, prefix=settings.API_V1_STR)
+app.include_router(screen_router.router)
 app.include_router(evidence_router.router, prefix=settings.API_V1_STR)
 app.include_router(privacy_router.router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router.router, prefix=settings.API_V1_STR)
