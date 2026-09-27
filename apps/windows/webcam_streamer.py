@@ -27,20 +27,23 @@ DEVICE_ID = "dev_oshadhaperera_925a94"
 def get_base_url():
     if os.environ.get("LAPTOPGUARD_API_URL"):
         return os.environ.get("LAPTOPGUARD_API_URL").rstrip('/')
-    try:
-        req = urllib.request.Request("http://127.0.0.1:8000/api/health")
-        with urllib.request.urlopen(req, timeout=1) as resp:
-            if resp.status == 200:
-                return "http://127.0.0.1:8000/api/v1"
-    except Exception:
-        pass
     return "https://laptopguard-api.onrender.com/api/v1"
 
 BASE_URL = get_base_url()
+LOCAL_BASE_URL = "http://127.0.0.1:8000/api/v1"
+
 FRAME_URL = f"{BASE_URL}/camera/frame/{DEVICE_ID}"
 SCREEN_URL = f"{BASE_URL}/screen/frame/{DEVICE_ID}"
 EVENT_URL = f"{BASE_URL}/events/report"
 STATUS_URL = f"{BASE_URL}/pairing/device/{DEVICE_ID}/status"
+
+def check_local_available():
+    try:
+        r = urllib.request.Request("http://127.0.0.1:8000/api/health")
+        with urllib.request.urlopen(r, timeout=0.8) as res:
+            return res.status == 200
+    except Exception:
+        return False
 
 def ensure_device_pairing():
     """Zero-Trust Pairing Handshake for Windows Sentinel."""
@@ -50,37 +53,55 @@ def ensure_device_pairing():
     print(f"💻 Device Identity: {DEVICE_ID}")
     print("=" * 65)
 
+    has_local = check_local_available()
+
     try:
         req = urllib.request.Request(STATUS_URL)
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
             if data.get("is_paired"):
-                print(f"[SENTINEL] Device is verified & bound to active owner. Status: {data.get('status')}")
+                print(f"[SENTINEL] Device is verified & bound to active owner on Cloud. Status: {data.get('status')}")
                 return
     except Exception:
         pass
 
-    # Unpaired -> Request Single-Use Pairing Code
+    # Unpaired -> Request Single-Use Pairing Code from Cloud
     try:
-        payload = json.dumps({
+        target_em = os.environ.get("LAPTOPGUARD_OWNER_EMAIL") or None
+        payload_dict = {
             "device_id": DEVICE_ID,
             "device_name": "Dell G15 Sentinel (Oshadha)",
             "device_public_key": "ed25519_pk_hardware_sentinel",
-            "target_email": os.environ.get("LAPTOPGUARD_OWNER_EMAIL", "oska@laptopguard.ai"),
+            "target_email": target_em,
             "manufacturer": "Dell Inc.",
             "model": "G15 5530",
             "os_version": "Windows 11 Home",
             "agent_version": "2.0.0"
-        }).encode('utf-8')
+        }
+        payload = json.dumps(payload_dict).encode('utf-8')
         p_req = urllib.request.Request(
             f"{BASE_URL}/pairing/request",
             data=payload,
             headers={'Content-Type': 'application/json'}
         )
-        with urllib.request.urlopen(p_req, timeout=6) as resp:
+        with urllib.request.urlopen(p_req, timeout=25) as resp:
             res = json.loads(resp.read().decode())
             code = res.get("pairing_code")
             req_id = res.get("pairing_request_id")
+
+            # Dual-sync to local if running
+            if has_local:
+                try:
+                    payload_dict["pairing_code"] = code
+                    payload_dict["pairing_request_id"] = req_id
+                    loc_p_req = urllib.request.Request(
+                        f"{LOCAL_BASE_URL}/pairing/request",
+                        data=json.dumps(payload_dict).encode('utf-8'),
+                        headers={'Content-Type': 'application/json'}
+                    )
+                    urllib.request.urlopen(loc_p_req, timeout=2)
+                except Exception:
+                    pass
 
             print("\n" + "★" * 65)
             print(f"🔑  ONE-TIME PAIRING CODE:   >>>  {code}  <<<")
@@ -94,7 +115,7 @@ def ensure_device_pairing():
                     time.sleep(2)
                     try:
                         c_req = urllib.request.Request(f"{BASE_URL}/pairing/status/{req_id}")
-                        with urllib.request.urlopen(c_req, timeout=4) as s_resp:
+                        with urllib.request.urlopen(c_req, timeout=8) as s_resp:
                             s_data = json.loads(s_resp.read().decode())
                             if s_data.get("status") == "CLAIMED":
                                 user_email = s_data.get("claimed_by_email", "Authorized User")
@@ -111,8 +132,18 @@ def ensure_device_pairing():
                                     data=conf_payload,
                                     headers={'Content-Type': 'application/json'}
                                 )
-                                with urllib.request.urlopen(conf_req, timeout=5) as ok_resp:
+                                with urllib.request.urlopen(conf_req, timeout=10) as ok_resp:
                                     print("✅ [PAIRING COMPLETE] Device ownership verified & locked!\n")
+                                    if has_local:
+                                        try:
+                                            loc_conf = urllib.request.Request(
+                                                f"{LOCAL_BASE_URL}/pairing/confirm",
+                                                data=conf_payload,
+                                                headers={'Content-Type': 'application/json'}
+                                            )
+                                            urllib.request.urlopen(loc_conf, timeout=2)
+                                        except Exception:
+                                            pass
                                     return
                             elif s_data.get("status") == "CONSUMED":
                                 return
@@ -175,7 +206,17 @@ def report_security_event(event_type: str, severity: str, description: str, meta
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             pass
-        print(f"[SENTINEL ALERT] Dispatched {event_type} ({severity}): {description}")
+        print(f"[SENTINEL ALERT] Dispatched to Cloud: {event_type} ({severity})")
+        if check_local_available():
+            try:
+                loc_req = urllib.request.Request(
+                    f"{LOCAL_BASE_URL}/events/report",
+                    data=payload,
+                    headers={'Content-Type': 'application/json'}
+                )
+                urllib.request.urlopen(loc_req, timeout=2)
+            except Exception:
+                pass
     except Exception as e:
         print(f"[ALERT ERROR] Failed to dispatch event {event_type}: {e}")
 
@@ -228,6 +269,17 @@ def screen_mirror_worker():
                 )
                 with urllib.request.urlopen(req, timeout=4) as resp:
                     pass
+
+                if check_local_available():
+                    try:
+                        loc_s = urllib.request.Request(
+                            f"{LOCAL_BASE_URL}/screen/frame/{DEVICE_ID}",
+                            data=screen_bytes,
+                            headers={'Content-Type': 'image/jpeg'}
+                        )
+                        urllib.request.urlopen(loc_s, timeout=1.5)
+                    except Exception:
+                        pass
 
             time.sleep(1.2) # ~1 fps screen mirror
         except Exception:
@@ -418,6 +470,17 @@ def webcam_and_ai_face_worker():
             )
             with urllib.request.urlopen(req, timeout=4) as resp:
                 pass
+
+            if check_local_available():
+                try:
+                    loc_f = urllib.request.Request(
+                        f"{LOCAL_BASE_URL}/camera/frame/{DEVICE_ID}",
+                        data=frame_data,
+                        headers={'Content-Type': 'image/jpeg'}
+                    )
+                    urllib.request.urlopen(loc_f, timeout=1.5)
+                except Exception:
+                    pass
 
             time.sleep(0.75) # Continuous live feed (~1.3 fps)
         except Exception:

@@ -65,10 +65,8 @@ namespace LaptopGuard.Desktop.Views
             }
             else
             {
-                // Fallback to offline pairing code
-                string fallbackCode = "LG-" + Guid.NewGuid().ToString("N")[..4].ToUpper() + "-" + Guid.NewGuid().ToString("N")[4..8].ToUpper();
-                PairingCodeText.Text = fallbackCode;
-                ExpiryText.Text = "⚠️ Offline mode code generated.";
+                PairingCodeText.Text = "FAILED ⚠️";
+                ExpiryText.Text = "Could not reach security server. Please check your internet connection and click 'Generate Code' again.";
             }
         }
 

@@ -148,7 +148,7 @@ namespace LaptopGuard.Desktop.Services
         {
             var identity = await GetOrCreateIdentityAsync();
             using var client = new System.Net.Http.HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(8);
+            client.Timeout = TimeSpan.FromSeconds(25);
 
             string baseUrl = string.IsNullOrEmpty(identity.CloudUrl) ? "https://laptopguard-api.onrender.com" : identity.CloudUrl;
 
@@ -179,7 +179,7 @@ namespace LaptopGuard.Desktop.Services
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
 
-                return new ServerPairingResult
+                var result = new ServerPairingResult
                 {
                     PairingRequestId = root.GetProperty("pairing_request_id").GetString() ?? "",
                     PairingCode = root.GetProperty("pairing_code").GetString() ?? "",
@@ -187,6 +187,37 @@ namespace LaptopGuard.Desktop.Services
                     QrPayload = root.GetProperty("qr_payload").GetString() ?? "",
                     ExpiresInSeconds = root.GetProperty("expires_in_seconds").GetInt32()
                 };
+
+                // Dual-sync to local backend if running
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var localClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                        var localPayload = new
+                        {
+                            device_id = identity.DeviceId,
+                            device_name = identity.DeviceName,
+                            device_public_key = "ed25519_pk_" + identity.DeviceId,
+                            target_email = string.IsNullOrWhiteSpace(targetEmail) ? null : targetEmail.Trim().ToLowerInvariant(),
+                            pairing_code = result.PairingCode,
+                            pairing_request_id = result.PairingRequestId,
+                            manufacturer = "Dell Inc.",
+                            model = "G15 5530",
+                            os_version = "Windows 11",
+                            agent_version = "2.0.0"
+                        };
+                        var localContent = new System.Net.Http.StringContent(
+                            JsonSerializer.Serialize(localPayload),
+                            System.Text.Encoding.UTF8,
+                            "application/json"
+                        );
+                        await localClient.PostAsync("http://127.0.0.1:8000/api/v1/pairing/request", localContent);
+                    }
+                    catch { }
+                });
+
+                return result;
             }
             catch
             {
@@ -198,21 +229,47 @@ namespace LaptopGuard.Desktop.Services
         {
             var identity = await GetOrCreateIdentityAsync();
             using var client = new System.Net.Http.HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(5);
+            client.Timeout = TimeSpan.FromSeconds(6);
 
             string baseUrl = string.IsNullOrEmpty(identity.CloudUrl) ? "https://laptopguard-api.onrender.com" : identity.CloudUrl;
 
             try
             {
                 var resp = await client.GetAsync($"{baseUrl.TrimEnd('/')}/api/v1/pairing/status/{requestId}");
-                if (!resp.IsSuccessStatusCode) return ("UNKNOWN", null);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var json = await resp.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    string st = root.GetProperty("status").GetString() ?? "PENDING";
+                    string? email = root.TryGetProperty("claimed_by_email", out var e) ? e.GetString() : null;
+                    if (st == "CLAIMED" || st == "CONSUMED")
+                    {
+                        return (st, email);
+                    }
+                }
 
-                var json = await resp.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-                string st = root.GetProperty("status").GetString() ?? "PENDING";
-                string? email = root.TryGetProperty("claimed_by_email", out var e) ? e.GetString() : null;
-                return (st, email);
+                // Fallback check on local if cloud returned PENDING or failed
+                try
+                {
+                    using var locClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(1.5) };
+                    var locResp = await locClient.GetAsync($"http://127.0.0.1:8000/api/v1/pairing/status/{requestId}");
+                    if (locResp.IsSuccessStatusCode)
+                    {
+                        var locJson = await locResp.Content.ReadAsStringAsync();
+                        using var locDoc = JsonDocument.Parse(locJson);
+                        var locRoot = locDoc.RootElement;
+                        string locSt = locRoot.GetProperty("status").GetString() ?? "PENDING";
+                        string? locEmail = locRoot.TryGetProperty("claimed_by_email", out var le) ? le.GetString() : null;
+                        if (locSt == "CLAIMED" || locSt == "CONSUMED")
+                        {
+                            return (locSt, locEmail);
+                        }
+                    }
+                }
+                catch { }
+
+                return ("PENDING", null);
             }
             catch
             {
@@ -224,7 +281,7 @@ namespace LaptopGuard.Desktop.Services
         {
             var identity = await GetOrCreateIdentityAsync();
             using var client = new System.Net.Http.HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(6);
+            client.Timeout = TimeSpan.FromSeconds(8);
 
             string baseUrl = string.IsNullOrEmpty(identity.CloudUrl) ? "https://laptopguard-api.onrender.com" : identity.CloudUrl;
 
@@ -244,7 +301,25 @@ namespace LaptopGuard.Desktop.Services
                 );
 
                 var resp = await client.PostAsync($"{baseUrl.TrimEnd('/')}/api/v1/pairing/confirm", content);
-                return resp.IsSuccessStatusCode;
+                bool cloudSuccess = resp.IsSuccessStatusCode;
+
+                // Also confirm locally if running
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var locClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                        var locContent = new System.Net.Http.StringContent(
+                            JsonSerializer.Serialize(payload),
+                            System.Text.Encoding.UTF8,
+                            "application/json"
+                        );
+                        await locClient.PostAsync("http://127.0.0.1:8000/api/v1/pairing/confirm", locContent);
+                    }
+                    catch { }
+                });
+
+                return cloudSuccess;
             }
             catch
             {

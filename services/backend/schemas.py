@@ -91,6 +91,8 @@ class PairingRequestCreate(BaseModel):
     device_public_key: str
     device_name: str
     target_email: Optional[str] = None
+    pairing_code: Optional[str] = None
+    pairing_request_id: Optional[str] = None
     manufacturer: Optional[str] = "Dell"
     model: Optional[str] = "G15 5530"
     os_version: Optional[str] = "Windows 11 Pro"

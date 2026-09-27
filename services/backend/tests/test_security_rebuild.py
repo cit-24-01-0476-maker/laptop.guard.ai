@@ -535,3 +535,31 @@ def test_16_target_email_pairing_lock():
     assert alice_claim.status_code == 200
     assert alice_claim.json()["status"] == "CLAIMED"
 
+
+def test_17_universal_pairing_without_email_lock():
+    """
+    Test 17: Universal Device Pairing (no target_email).
+    Any valid registered user can claim the code, and prefix (LG-) is flexible.
+    """
+    db = TestingSessionLocal()
+    user, user_token = create_test_user(db, email="anyuser@laptopguard.ai")
+
+    dev_id = f"dev_{uuid.uuid4().hex[:8]}"
+    req_resp = client.post("/api/v1/pairing/request", json={
+        "device_id": dev_id,
+        "device_name": "Universal Laptop",
+        "device_public_key": "ed25519_universal_laptop",
+        "target_email": None
+    })
+    assert req_resp.status_code == 200
+    pairing_code = req_resp.json()["pairing_code"] # e.g. LG-ABCD-1234
+
+    # User claims with code stripped of LG- prefix
+    raw_unprefixed = pairing_code.replace("LG-", "").replace("-", "")
+    claim_resp = client.post("/api/v1/pairing/claim", json={
+        "pairing_code": raw_unprefixed
+    }, headers={"Authorization": f"Bearer {user_token}"})
+    assert claim_resp.status_code == 200
+    assert claim_resp.json()["status"] == "CLAIMED"
+
+

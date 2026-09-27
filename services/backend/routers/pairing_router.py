@@ -54,7 +54,9 @@ def generate_human_pairing_code() -> str:
     return f"LG-{part1}-{part2}"
 
 def hash_code(code: str) -> str:
-    clean = code.strip().upper().replace(" ", "").replace("-", "")
+    clean = code.strip().upper().replace(" ", "").replace("-", "").replace("_", "")
+    if clean.startswith("LG"):
+        clean = clean[2:]
     return hashlib.sha256(clean.encode("utf-8")).hexdigest()
 
 def mask_email(email: str) -> str:
@@ -111,12 +113,15 @@ def create_pairing_request(
     for o in old_requests:
         o.status = "EXPIRED"
 
-    # 3. Generate human-readable single-use pairing code
-    raw_code = generate_human_pairing_code()
+    # 3. Generate human-readable single-use pairing code (or use synced code)
+    raw_code = req.pairing_code if req.pairing_code else generate_human_pairing_code()
+    if not raw_code.upper().startswith("LG-") and len(raw_code.replace("-", "")) == 8:
+        c = raw_code.replace("-", "").upper()
+        raw_code = f"LG-{c[:4]}-{c[4:]}"
     code_h = hash_code(raw_code)
     code_prev = raw_code.split("-")[-1] # e.g. "P92Q"
 
-    pairing_req_id = f"pair_{uuid.uuid4().hex[:12]}"
+    pairing_req_id = req.pairing_request_id if req.pairing_request_id else f"pair_{uuid.uuid4().hex[:12]}"
     expires_at = now + timedelta(minutes=5)
 
     target_email_clean = req.target_email.strip().lower() if req.target_email else None
