@@ -150,16 +150,7 @@ namespace LaptopGuard.Desktop.Services
             using var client = new System.Net.Http.HttpClient();
             client.Timeout = TimeSpan.FromSeconds(8);
 
-            string baseUrl = identity.CloudUrl;
-            try
-            {
-                var healthResp = await client.GetAsync("http://127.0.0.1:8000/api/health");
-                if (healthResp.IsSuccessStatusCode)
-                {
-                    baseUrl = "http://127.0.0.1:8000";
-                }
-            }
-            catch { }
+            string baseUrl = string.IsNullOrEmpty(identity.CloudUrl) ? "https://laptopguard-api.onrender.com" : identity.CloudUrl;
 
             var payload = new
             {
@@ -209,13 +200,7 @@ namespace LaptopGuard.Desktop.Services
             using var client = new System.Net.Http.HttpClient();
             client.Timeout = TimeSpan.FromSeconds(5);
 
-            string baseUrl = identity.CloudUrl;
-            try
-            {
-                var healthResp = await client.GetAsync("http://127.0.0.1:8000/api/health");
-                if (healthResp.IsSuccessStatusCode) baseUrl = "http://127.0.0.1:8000";
-            }
-            catch { }
+            string baseUrl = string.IsNullOrEmpty(identity.CloudUrl) ? "https://laptopguard-api.onrender.com" : identity.CloudUrl;
 
             try
             {
@@ -241,13 +226,7 @@ namespace LaptopGuard.Desktop.Services
             using var client = new System.Net.Http.HttpClient();
             client.Timeout = TimeSpan.FromSeconds(6);
 
-            string baseUrl = identity.CloudUrl;
-            try
-            {
-                var healthResp = await client.GetAsync("http://127.0.0.1:8000/api/health");
-                if (healthResp.IsSuccessStatusCode) baseUrl = "http://127.0.0.1:8000";
-            }
-            catch { }
+            string baseUrl = string.IsNullOrEmpty(identity.CloudUrl) ? "https://laptopguard-api.onrender.com" : identity.CloudUrl;
 
             try
             {
