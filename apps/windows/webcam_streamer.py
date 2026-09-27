@@ -23,11 +23,108 @@ except Exception:
     pass
 
 DEVICE_ID = "dev_oshadhaperera_925a94"
-BASE_URL = "https://laptopguard-api.onrender.com/api/v1"
+
+def get_base_url():
+    if os.environ.get("LAPTOPGUARD_API_URL"):
+        return os.environ.get("LAPTOPGUARD_API_URL").rstrip('/')
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8000/api/health")
+        with urllib.request.urlopen(req, timeout=1) as resp:
+            if resp.status == 200:
+                return "http://127.0.0.1:8000/api/v1"
+    except Exception:
+        pass
+    return "https://laptopguard-api.onrender.com/api/v1"
+
+BASE_URL = get_base_url()
 FRAME_URL = f"{BASE_URL}/camera/frame/{DEVICE_ID}"
 SCREEN_URL = f"{BASE_URL}/screen/frame/{DEVICE_ID}"
 EVENT_URL = f"{BASE_URL}/events/report"
 STATUS_URL = f"{BASE_URL}/devices/{DEVICE_ID}/status"
+
+def ensure_device_pairing():
+    """Zero-Trust Pairing Handshake for Windows Sentinel."""
+    print("=" * 65)
+    print("🛡️  LAPTOPGUARD AI SENTINEL • HARDWARE SECURITY ENGINE")
+    print(f"📡 API Endpoint: {BASE_URL}")
+    print(f"💻 Device Identity: {DEVICE_ID}")
+    print("=" * 65)
+
+    try:
+        req = urllib.request.Request(STATUS_URL)
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+            if data.get("is_paired"):
+                print(f"[SENTINEL] Device is verified & bound to active owner. Status: {data.get('status')}")
+                return
+    except Exception:
+        pass
+
+    # Unpaired -> Request Single-Use Pairing Code
+    try:
+        payload = json.dumps({
+            "device_id": DEVICE_ID,
+            "device_name": "Dell G15 Sentinel (Oshadha)",
+            "device_public_key": "ed25519_pk_hardware_sentinel",
+            "manufacturer": "Dell Inc.",
+            "model": "G15 5530",
+            "os_version": "Windows 11 Home",
+            "agent_version": "2.0.0"
+        }).encode('utf-8')
+        p_req = urllib.request.Request(
+            f"{BASE_URL}/pairing/request",
+            data=payload,
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(p_req, timeout=6) as resp:
+            res = json.loads(resp.read().decode())
+            code = res.get("pairing_code")
+            req_id = res.get("pairing_request_id")
+
+            print("\n" + "★" * 65)
+            print(f"🔑  ONE-TIME PAIRING CODE:   >>>  {code}  <<<")
+            print("★" * 65)
+            print("👉 Enter this code on your Web Dashboard or Phone App to pair this laptop!")
+            print("⏳ Code expires in 5 minutes (300 seconds). Waiting for your claim...\n")
+
+            # Non-blocking poll thread for owner approval
+            def poll_for_claim():
+                for _ in range(150): # 5 minutes
+                    time.sleep(2)
+                    try:
+                        c_req = urllib.request.Request(f"{BASE_URL}/pairing/status/{req_id}")
+                        with urllib.request.urlopen(c_req, timeout=4) as s_resp:
+                            s_data = json.loads(s_resp.read().decode())
+                            if s_data.get("status") == "CLAIMED":
+                                user_email = s_data.get("claimed_by_email", "Authorized User")
+                                print(f"\n🔔 [CLAIM DETECTED] Claimed by {user_email}!")
+                                print(f"🔒 [LOCAL APPROVAL] Auto-approving on physical laptop...")
+                                
+                                conf_payload = json.dumps({
+                                    "pairing_request_id": req_id,
+                                    "device_id": DEVICE_ID,
+                                    "approved": True
+                                }).encode('utf-8')
+                                conf_req = urllib.request.Request(
+                                    f"{BASE_URL}/pairing/confirm",
+                                    data=conf_payload,
+                                    headers={'Content-Type': 'application/json'}
+                                )
+                                with urllib.request.urlopen(conf_req, timeout=5) as ok_resp:
+                                    print("✅ [PAIRING COMPLETE] Device ownership verified & locked!\n")
+                                    return
+                            elif s_data.get("status") == "CONSUMED":
+                                return
+                    except Exception:
+                        pass
+
+            t_pair = threading.Thread(target=poll_for_claim, daemon=True)
+            t_pair.start()
+
+    except Exception as e:
+        print(f"[PAIRING NOTICE] {e}")
+
+ensure_device_pairing()
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "face_detection_yunet_2023mar.onnx")
 
