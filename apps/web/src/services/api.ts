@@ -55,19 +55,27 @@ export const getDownloadUrl = (endpoint: string): string => {
 };
 
 export const getCameraStreamUrl = (deviceId: string): string => {
-  return `${getApiBaseUrl()}/camera/stream/${deviceId}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_token') || '' : '';
+  const cid = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_controller_id') || '' : '';
+  return `${getApiBaseUrl()}/camera/stream/${deviceId}?token=${encodeURIComponent(token)}&cid=${encodeURIComponent(cid)}`;
 };
 
 export const getCameraSnapshotUrl = (deviceId: string, ts?: number): string => {
-  return `${getApiBaseUrl()}/camera/snapshot/${deviceId}?t=${ts ?? Date.now()}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_token') || '' : '';
+  const cid = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_controller_id') || '' : '';
+  return `${getApiBaseUrl()}/camera/snapshot/${deviceId}?t=${ts ?? Date.now()}&token=${encodeURIComponent(token)}&cid=${encodeURIComponent(cid)}`;
 };
 
 export const getScreenStreamUrl = (deviceId: string): string => {
-  return `${getApiBaseUrl()}/screen/stream/${deviceId}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_token') || '' : '';
+  const cid = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_controller_id') || '' : '';
+  return `${getApiBaseUrl()}/screen/stream/${deviceId}?token=${encodeURIComponent(token)}&cid=${encodeURIComponent(cid)}`;
 };
 
 export const getScreenSnapshotUrl = (deviceId: string, ts?: number): string => {
-  return `${getApiBaseUrl()}/screen/snapshot/${deviceId}?t=${ts ?? Date.now()}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_token') || '' : '';
+  const cid = typeof window !== 'undefined' ? localStorage.getItem('laptopguard_controller_id') || '' : '';
+  return `${getApiBaseUrl()}/screen/snapshot/${deviceId}?t=${ts ?? Date.now()}&token=${encodeURIComponent(token)}&cid=${encodeURIComponent(cid)}`;
 };
 
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
