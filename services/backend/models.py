@@ -104,6 +104,7 @@ class PairingRequest(Base):
     status = Column(String, default="PENDING") # PENDING, CLAIMED, CONFIRMED, DENIED, EXPIRED, CONSUMED
     attempt_count = Column(Integer, default=0)
     requested_ip = Column(String, nullable=True)
+    target_email = Column(String, nullable=True, index=True)
     claimed_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
     confirmed_at = Column(DateTime, nullable=True)
     consumed_at = Column(DateTime, nullable=True)

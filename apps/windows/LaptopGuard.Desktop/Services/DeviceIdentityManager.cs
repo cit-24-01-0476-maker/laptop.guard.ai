@@ -134,5 +134,143 @@ namespace LaptopGuard.Desktop.Services
 
             return JsonSerializer.Serialize(payload);
         }
+
+        public class ServerPairingResult
+        {
+            public string PairingRequestId { get; set; } = string.Empty;
+            public string PairingCode { get; set; } = string.Empty;
+            public string TargetEmail { get; set; } = string.Empty;
+            public string QrPayload { get; set; } = string.Empty;
+            public int ExpiresInSeconds { get; set; } = 300;
+        }
+
+        public async Task<ServerPairingResult?> RequestServerPairingCodeAsync(string? targetEmail = null)
+        {
+            var identity = await GetOrCreateIdentityAsync();
+            using var client = new System.Net.Http.HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(8);
+
+            string baseUrl = identity.CloudUrl;
+            try
+            {
+                var healthResp = await client.GetAsync("http://127.0.0.1:8000/api/health");
+                if (healthResp.IsSuccessStatusCode)
+                {
+                    baseUrl = "http://127.0.0.1:8000";
+                }
+            }
+            catch { }
+
+            var payload = new
+            {
+                device_id = identity.DeviceId,
+                device_name = identity.DeviceName,
+                device_public_key = "ed25519_pk_" + identity.DeviceId,
+                target_email = string.IsNullOrWhiteSpace(targetEmail) ? null : targetEmail.Trim().ToLowerInvariant(),
+                manufacturer = "Dell Inc.",
+                model = "G15 5530",
+                os_version = "Windows 11",
+                agent_version = "2.0.0"
+            };
+
+            var content = new System.Net.Http.StringContent(
+                JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+
+            try
+            {
+                var resp = await client.PostAsync($"{baseUrl.TrimEnd('/')}/api/v1/pairing/request", content);
+                if (!resp.IsSuccessStatusCode) return null;
+
+                var json = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                return new ServerPairingResult
+                {
+                    PairingRequestId = root.GetProperty("pairing_request_id").GetString() ?? "",
+                    PairingCode = root.GetProperty("pairing_code").GetString() ?? "",
+                    TargetEmail = targetEmail ?? "",
+                    QrPayload = root.GetProperty("qr_payload").GetString() ?? "",
+                    ExpiresInSeconds = root.GetProperty("expires_in_seconds").GetInt32()
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<(string status, string? claimedBy)> CheckPairingStatusAsync(string requestId)
+        {
+            var identity = await GetOrCreateIdentityAsync();
+            using var client = new System.Net.Http.HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(5);
+
+            string baseUrl = identity.CloudUrl;
+            try
+            {
+                var healthResp = await client.GetAsync("http://127.0.0.1:8000/api/health");
+                if (healthResp.IsSuccessStatusCode) baseUrl = "http://127.0.0.1:8000";
+            }
+            catch { }
+
+            try
+            {
+                var resp = await client.GetAsync($"{baseUrl.TrimEnd('/')}/api/v1/pairing/status/{requestId}");
+                if (!resp.IsSuccessStatusCode) return ("UNKNOWN", null);
+
+                var json = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                string st = root.GetProperty("status").GetString() ?? "PENDING";
+                string? email = root.TryGetProperty("claimed_by_email", out var e) ? e.GetString() : null;
+                return (st, email);
+            }
+            catch
+            {
+                return ("ERROR", null);
+            }
+        }
+
+        public async Task<bool> ConfirmPairingAsync(string requestId)
+        {
+            var identity = await GetOrCreateIdentityAsync();
+            using var client = new System.Net.Http.HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(6);
+
+            string baseUrl = identity.CloudUrl;
+            try
+            {
+                var healthResp = await client.GetAsync("http://127.0.0.1:8000/api/health");
+                if (healthResp.IsSuccessStatusCode) baseUrl = "http://127.0.0.1:8000";
+            }
+            catch { }
+
+            try
+            {
+                var payload = new
+                {
+                    pairing_request_id = requestId,
+                    device_id = identity.DeviceId,
+                    approved = true
+                };
+
+                var content = new System.Net.Http.StringContent(
+                    JsonSerializer.Serialize(payload),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                );
+
+                var resp = await client.PostAsync($"{baseUrl.TrimEnd('/')}/api/v1/pairing/confirm", content);
+                return resp.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

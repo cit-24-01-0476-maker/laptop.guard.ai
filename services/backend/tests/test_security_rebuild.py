@@ -499,3 +499,39 @@ def test_15_websocket_hub_cross_account_isolation():
 
     # Assert Bob received ZERO messages (zero cross-user leakage)
     assert len(mock_ws_bob.messages) == 0
+
+
+def test_16_target_email_pairing_lock():
+    """
+    Test 16: Device pairing code locked to specific email.
+    If issued for alice@example.com, bob@example.com cannot claim it.
+    Only alice@example.com can claim it.
+    """
+    db = TestingSessionLocal()
+    alice, alice_token = create_test_user(db, email="alice_security@example.com")
+    bob, bob_token = create_test_user(db, email="bob_intruder@example.com")
+
+    dev_id = f"dev_{uuid.uuid4().hex[:8]}"
+    req_resp = client.post("/api/v1/pairing/request", json={
+        "device_id": dev_id,
+        "device_name": "Alice Locked Laptop",
+        "device_public_key": "ed25519_alice_laptop",
+        "target_email": "alice_security@example.com"
+    })
+    assert req_resp.status_code == 200
+    pairing_code = req_resp.json()["pairing_code"]
+
+    # Bob attempts to claim Alice's code -> REJECTED 403 FORBIDDEN
+    bob_claim = client.post("/api/v1/pairing/claim", json={
+        "pairing_code": pairing_code
+    }, headers={"Authorization": f"Bearer {bob_token}"})
+    assert bob_claim.status_code == 403
+    assert "issued specifically for alice_security@example.com" in bob_claim.json()["detail"]
+
+    # Alice claims her code -> SUCCESS 200 OK
+    alice_claim = client.post("/api/v1/pairing/claim", json={
+        "pairing_code": pairing_code
+    }, headers={"Authorization": f"Bearer {alice_token}"})
+    assert alice_claim.status_code == 200
+    assert alice_claim.json()["status"] == "CLAIMED"
+

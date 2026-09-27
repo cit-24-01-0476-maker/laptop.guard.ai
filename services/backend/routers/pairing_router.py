@@ -119,11 +119,14 @@ def create_pairing_request(
     pairing_req_id = f"pair_{uuid.uuid4().hex[:12]}"
     expires_at = now + timedelta(minutes=5)
 
+    target_email_clean = req.target_email.strip().lower() if req.target_email else None
+
     pairing_req = models.PairingRequest(
         id=pairing_req_id,
         protected_device_id=req.device_id,
         code_hash=code_h,
         code_preview=code_prev,
+        target_email=target_email_clean,
         created_at=now,
         expires_at=expires_at,
         status="PENDING",
@@ -137,7 +140,7 @@ def create_pairing_request(
         id=f"aud_{uuid.uuid4().hex[:12]}",
         device_id=req.device_id,
         action="PAIRING_CODE_GENERATED",
-        details_json=json.dumps({"request_id": pairing_req_id, "preview": code_prev}),
+        details_json=json.dumps({"request_id": pairing_req_id, "preview": code_prev, "target_email": target_email_clean}),
         ip_address=request.client.host if request.client else None,
         timestamp=now
     )
@@ -149,6 +152,7 @@ def create_pairing_request(
         "pairing_request_id": pairing_req_id,
         "device_id": req.device_id,
         "pairing_code": raw_code,
+        "target_email": target_email_clean,
         "cloud_url": "https://laptopguard-api.onrender.com",
         "expires_at": expires_at.isoformat()
     })
@@ -157,6 +161,7 @@ def create_pairing_request(
         "pairing_request_id": pairing_req_id,
         "device_id": req.device_id,
         "pairing_code": raw_code,
+        "target_email": target_email_clean,
         "qr_payload": qr_payload,
         "expires_in_seconds": 300,
         "expires_at": expires_at,
@@ -219,6 +224,15 @@ def claim_pairing_code(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Pairing request is in '{pairing_req.status}' state and cannot be claimed."
         )
+
+    # Specification: Strict User Email Binding
+    if pairing_req.target_email:
+        if current_user.email.strip().lower() != pairing_req.target_email.strip().lower():
+            record_pairing_failure(rate_key)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"This pairing code was issued specifically for {pairing_req.target_email}. You are signed in as {current_user.email}. Please sign in with {pairing_req.target_email} to pair this laptop."
+            )
 
     # Transition to CLAIMED
     pairing_req.status = "CLAIMED"

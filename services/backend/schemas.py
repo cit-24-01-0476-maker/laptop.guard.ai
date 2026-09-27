@@ -90,6 +90,7 @@ class PairingRequestCreate(BaseModel):
     device_id: str
     device_public_key: str
     device_name: str
+    target_email: Optional[str] = None
     manufacturer: Optional[str] = "Dell"
     model: Optional[str] = "G15 5530"
     os_version: Optional[str] = "Windows 11 Pro"
@@ -99,6 +100,7 @@ class PairingRequestResponse(BaseModel):
     pairing_request_id: str
     device_id: str
     pairing_code: str # e.g. LG-7K4M-P92Q
+    target_email: Optional[str] = None
     qr_payload: str
     expires_in_seconds: int = 300
     expires_at: datetime
