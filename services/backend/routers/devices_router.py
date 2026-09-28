@@ -276,3 +276,87 @@ def transfer_device(
     db.commit()
 
     return {"status": "success", "message": f"Device '{device.device_name}' ownership has been reset for new transfer/enrollment."}
+
+
+@router.post("/{device_id}/bond-with-qr")
+def bond_device_with_qr(
+    device_id: str,
+    payload: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Direct device bonding via QR scan or manual device ID entry.
+    Creates device record if missing and establishes ownership.
+    """
+    now = datetime.utcnow()
+
+    device = db.query(models.ProtectedDevice).filter(models.ProtectedDevice.id == device_id).first()
+    if not device:
+        device = models.ProtectedDevice(
+            id=device_id,
+            device_public_id=f"pub_{uuid.uuid4().hex[:12]}",
+            device_name=payload.get("device_name", "Windows Sentinel Laptop"),
+            manufacturer=payload.get("manufacturer", "Unknown"),
+            model=payload.get("model", "Laptop"),
+            os_version=payload.get("os_version", "Windows 11"),
+            agent_version=payload.get("agent_version", "2.0.0"),
+            device_public_key="ed25519_pk_auto",
+            status="Protected",
+            security_mode="Balanced",
+            battery=100,
+            is_charging=True,
+            created_at=now,
+            last_seen=now
+        )
+        db.add(device)
+        db.commit()
+        db.refresh(device)
+
+    # Check existing active ownership
+    existing = db.query(models.DeviceOwnership).filter(
+        models.DeviceOwnership.device_id == device_id,
+        models.DeviceOwnership.revoked_at.is_(None)
+    ).first()
+
+    if existing and existing.user_id == current_user.id:
+        # Already owned by this user
+        device.status = "Protected"
+        device.last_seen = now
+        db.commit()
+        return {"status": "success", "message": "Device already bound to your account.", "device": {
+            "id": device.id, "device_name": device.device_name, "status": device.status
+        }}
+
+    if existing:
+        # Revoke previous owner
+        existing.revoked_at = now
+
+    new_ownership = models.DeviceOwnership(
+        id=f"own_{uuid.uuid4().hex[:12]}",
+        user_id=current_user.id,
+        device_id=device_id,
+        role="OWNER",
+        created_at=now
+    )
+    db.add(new_ownership)
+
+    device.status = "Protected"
+    device.last_seen = now
+
+    audit = models.AuditLog(
+        id=f"aud_{uuid.uuid4().hex[:12]}",
+        user_id=current_user.id,
+        device_id=device_id,
+        action="DEVICE_BONDED_QR",
+        details_json=json.dumps({"ownership_id": new_ownership.id, "method": "qr_scan"}),
+        ip_address=request.client.host if request.client else None,
+        timestamp=now
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"status": "success", "message": f"Device '{device.device_name}' successfully bonded.", "device": {
+        "id": device.id, "device_name": device.device_name, "status": device.status
+    }}
