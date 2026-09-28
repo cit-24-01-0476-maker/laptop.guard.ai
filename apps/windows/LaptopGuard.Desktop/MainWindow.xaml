@@ -53,15 +53,43 @@
 
                     <!-- Header Right: Service Health & Window Controls -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <!-- IPC Status Pill -->
-                        <Border Background="#1E293B" CornerRadius="12" Padding="8,4" Margin="0,0,16,0">
+                        <!-- Cloud Status Pill -->
+                        <Border Background="#1E293B" CornerRadius="12" Padding="8,4" Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="8" Height="8" 
-                                         Fill="{Binding IsIpcConnected, Converter={x:Null}}" 
-                                         Margin="0,0,6,0">
+                                <Ellipse Width="8" Height="8" Margin="0,0,6,0">
                                     <Ellipse.Style>
                                         <Style TargetType="Ellipse">
                                             <Setter Property="Fill" Value="#EF4444"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCloudConnected}" Value="True">
+                                                    <Setter Property="Fill" Value="#10B981"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock FontSize="11" Foreground="#94A3B8" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Cloud Offline"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCloudConnected}" Value="True">
+                                                    <Setter Property="Text" Value="Cloud Connected"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- IPC Status Pill -->
+                        <Border Background="#1E293B" CornerRadius="12" Padding="8,4" Margin="0,0,16,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8" Margin="0,0,6,0">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#64748B"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsIpcConnected}" Value="True">
                                                     <Setter Property="Fill" Value="#10B981"/>
@@ -70,13 +98,13 @@
                                         </Style>
                                     </Ellipse.Style>
                                 </Ellipse>
-                                <TextBlock Text="{Binding IsIpcConnected, Converter={x:Null}}" FontSize="11" Foreground="#94A3B8" FontWeight="SemiBold">
+                                <TextBlock FontSize="11" Foreground="#94A3B8" FontWeight="SemiBold">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Service Disconnected"/>
+                                            <Setter Property="Text" Value="Standalone Mode"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsIpcConnected}" Value="True">
-                                                    <Setter Property="Text" Value="Sentinel Service Active"/>
+                                                    <Setter Property="Text" Value="Service Active"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

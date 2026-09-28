@@ -22,7 +22,14 @@ try:
 except Exception:
     pass
 
-DEVICE_ID = "dev_oshadhaperera_925a94"
+DEVICE_ID = os.environ.get("LAPTOPGUARD_DEVICE_ID")
+if not DEVICE_ID:
+    for arg in sys.argv[1:]:
+        if arg.startswith("dev_"):
+            DEVICE_ID = arg
+            break
+if not DEVICE_ID:
+    DEVICE_ID = "dev_oshadhaperera_925a94"
 
 def get_base_url():
     if os.environ.get("LAPTOPGUARD_API_URL"):

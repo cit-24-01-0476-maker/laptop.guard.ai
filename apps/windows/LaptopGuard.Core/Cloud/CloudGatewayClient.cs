@@ -61,12 +61,11 @@ namespace LaptopGuard.Core.Cloud
             {
                 try
                 {
-                    string wsScheme = _cloudBaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "wss://" : "ws://";
-                    string hostAndPath = _cloudBaseUrl
-                        .Replace("https://", "", StringComparison.OrdinalIgnoreCase)
-                        .Replace("http://", "", StringComparison.OrdinalIgnoreCase);
+                    var baseUri = new Uri(_cloudBaseUrl);
+                    string wsScheme = baseUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? "wss://" : "ws://";
+                    string host = baseUri.Authority;
 
-                    var wsUri = new Uri($"{wsScheme}{hostAndPath}/ws/device/{_deviceId}");
+                    var wsUri = new Uri($"{wsScheme}{host}/ws/device/{_deviceId}");
 
                     _webSocket = new ClientWebSocket();
                     _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);

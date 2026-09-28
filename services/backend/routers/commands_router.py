@@ -71,6 +71,8 @@ async def execute_command_internal(
         device.status = "Lost"
     elif command_type == "DISABLE_LOST_MODE":
         device.status = "Protected"
+    elif command_type in ("LOCK_DEVICE", "LOCK", "LOCK_WORKSTATION"):
+        device.status = "Locked"
 
     device.last_seen = now
     db.commit()

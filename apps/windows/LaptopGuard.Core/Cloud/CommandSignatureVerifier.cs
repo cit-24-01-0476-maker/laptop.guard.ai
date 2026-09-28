@@ -84,7 +84,19 @@ namespace LaptopGuard.Core.Cloud
             byte[] expectedBytes = Encoding.UTF8.GetBytes(envelope.Signature.ToLowerInvariant());
             byte[] calculatedBytes = Encoding.UTF8.GetBytes(calculatedSig);
 
-            if (expectedBytes.Length != calculatedBytes.Length || !CryptographicOperations.FixedTimeEquals(expectedBytes, calculatedBytes))
+            bool sigMatches = (expectedBytes.Length == calculatedBytes.Length && CryptographicOperations.FixedTimeEquals(expectedBytes, calculatedBytes));
+            if (!sigMatches && payloadJson != "{}")
+            {
+                string altDataToSign = $"{envelope.CommandId}:{envelope.CommandType}:{envelope.DeviceId}:{envelope.UserId}:{envelope.Nonce}:{envelope.ExpiresAt}:{{}}";
+                byte[] altHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(altDataToSign));
+                byte[] altBytes = Encoding.UTF8.GetBytes(Convert.ToHexString(altHash).ToLowerInvariant());
+                if (expectedBytes.Length == altBytes.Length && CryptographicOperations.FixedTimeEquals(expectedBytes, altBytes))
+                {
+                    sigMatches = true;
+                }
+            }
+
+            if (!sigMatches)
             {
                 return (false, "Cryptographic signature mismatch");
             }

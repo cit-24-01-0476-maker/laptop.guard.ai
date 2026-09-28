@@ -6,6 +6,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using System.Diagnostics;
+using System.IO;
+using LaptopGuard.Core.Cloud;
 using LaptopGuard.Core.Ipc;
 using LaptopGuard.Core.Models;
 using LaptopGuard.Core.Native;
@@ -20,6 +23,8 @@ namespace LaptopGuard.Desktop.ViewModels
         private readonly LocalDurableStore _store = new();
         private readonly NamedPipeIpcClient _ipcClient = new();
         private readonly SecurityStateMachine _stateMachine = new();
+        private CloudGatewayClient? _cloudClient;
+        private Process? _webcamProcess;
         private DeviceIdentityManager? _identityManager;
         private DispatcherTimer? _graceTimer;
         private int _remainingGrace = 5;
@@ -39,6 +44,7 @@ namespace LaptopGuard.Desktop.ViewModels
         private string _toggleArmButtonText = "Arm Sentinel";
         private string _toggleArmButtonColor = "#0284C7";
         private bool _isIpcConnected = false;
+        private bool _isCloudConnected = false;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -135,6 +141,12 @@ namespace LaptopGuard.Desktop.ViewModels
             set { _isIpcConnected = value; OnPropertyChanged(); }
         }
 
+        public bool IsCloudConnected
+        {
+            get => _isCloudConnected;
+            set { _isCloudConnected = value; OnPropertyChanged(); }
+        }
+
         public async Task InitializeAsync()
         {
             await _store.InitializeAsync();
@@ -155,6 +167,62 @@ namespace LaptopGuard.Desktop.ViewModels
                     try { System.Media.SystemSounds.Hand.Play(); } catch { }
                 });
             };
+
+            _stateMachine.OnStateChanged += (s, newState) =>
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    CurrentState = newState;
+                });
+            };
+
+            // Connect to Cloud Gateway for Remote Phone Control, Live Lock, Arm/Disarm
+            try
+            {
+                string cloudUrl = string.IsNullOrWhiteSpace(identity.CloudUrl)
+                    ? "https://laptopguard-api.onrender.com"
+                    : identity.CloudUrl;
+
+                _cloudClient = new CloudGatewayClient(cloudUrl, identity.DeviceId, _store, _stateMachine);
+                _cloudClient.OnConnectionStatusChanged += (s, connected) =>
+                {
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        IsCloudConnected = connected;
+                    });
+                };
+
+                _cloudClient.OnLockRequested += (s, e) =>
+                {
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        LockWorkstationNow();
+                    });
+                };
+
+                _cloudClient.OnAlarmRequested += (s, shouldAlarm) =>
+                {
+                    if (shouldAlarm)
+                    {
+                        Task.Run(async () =>
+                        {
+                            for (int i = 0; i < 15; i++)
+                            {
+                                try { Console.Beep(2500, 350); } catch { }
+                                try { System.Media.SystemSounds.Hand.Play(); } catch { }
+                                await Task.Delay(200);
+                            }
+                        });
+                    }
+                };
+
+                _cloudClient.Start();
+                StartWebcamStreamer(identity.DeviceId, cloudUrl);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DESKTOP] Cloud Gateway init error: {ex.Message}");
+            }
 
             RefreshHardwareStatus();
             await RefreshIncidentsAsync();
@@ -190,6 +258,52 @@ namespace LaptopGuard.Desktop.ViewModels
 
             _ipcClient.OnMessageReceived += HandleIpcMessage;
             try { _ipcClient.Start(); } catch { }
+        }
+
+        private void StartWebcamStreamer(string deviceId, string cloudUrl)
+        {
+            try
+            {
+                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                string[] potentialPaths = new[]
+                {
+                    Path.Combine(currentDir, "webcam_streamer.py"),
+                    Path.Combine(currentDir, "..", "..", "..", "..", "webcam_streamer.py"),
+                    @"E:\Laptop Securtiy Ai\laptopguard-ai\apps\windows\webcam_streamer.py"
+                };
+
+                string? streamerScript = null;
+                foreach (var p in potentialPaths)
+                {
+                    if (File.Exists(p))
+                    {
+                        streamerScript = Path.GetFullPath(p);
+                        break;
+                    }
+                }
+
+                if (streamerScript != null && File.Exists(streamerScript))
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = $"\"{streamerScript}\" \"{deviceId}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = false,
+                        RedirectStandardError = false
+                    };
+                    psi.EnvironmentVariables["LAPTOPGUARD_DEVICE_ID"] = deviceId;
+                    psi.EnvironmentVariables["LAPTOPGUARD_API_URL"] = cloudUrl.TrimEnd('/') + "/api/v1";
+
+                    _webcamProcess = Process.Start(psi);
+                    Console.WriteLine($"[DESKTOP] Started webcam streamer process (PID: {_webcamProcess?.Id}) for {deviceId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DESKTOP] Could not auto-start webcam streamer: {ex.Message}");
+            }
         }
 
         public void RefreshHardwareStatus()

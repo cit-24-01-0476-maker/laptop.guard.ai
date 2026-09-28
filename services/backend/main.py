@@ -106,6 +106,7 @@ def on_startup():
 # =============================================================================
 
 @app.websocket("/ws/device/{device_id}")
+@app.websocket("/api/v1/ws/device/{device_id}")
 async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
     """Real-time bidirectional channel for Laptop Security Agents."""
     db: Session = next(get_db())
@@ -292,6 +293,7 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
 
 
 @app.websocket("/ws/client/{user_id}")
+@app.websocket("/api/v1/ws/client/{user_id}")
 async def client_websocket_endpoint(websocket: WebSocket, user_id: str):
     """Real-time channel for Web Dashboards and Mobile Applications."""
     await hub.register_client(user_id, websocket)
