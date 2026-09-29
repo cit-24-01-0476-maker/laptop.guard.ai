@@ -239,7 +239,8 @@ def get_network_info():
         pass
 
     try:
-        out = subprocess.check_output(["netsh", "wlan", "show", "interfaces"], encoding="utf-8", errors="ignore")
+        no_window_flag = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+        out = subprocess.check_output(["netsh", "wlan", "show", "interfaces"], encoding="utf-8", errors="ignore", creationflags=no_window_flag)
         m = re.search(r"^\s*SSID\s*:\s*(.+)$", out, re.MULTILINE)
         if m:
             clean_ssid = m.group(1).strip()

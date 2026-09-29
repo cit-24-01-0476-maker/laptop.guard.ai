@@ -24,7 +24,6 @@ namespace LaptopGuard.Desktop.ViewModels
         private readonly NamedPipeIpcClient _ipcClient = new();
         private readonly SecurityStateMachine _stateMachine = new();
         private CloudGatewayClient? _cloudClient;
-        private Process? _webcamProcess;
         private DeviceIdentityManager? _identityManager;
         private DispatcherTimer? _graceTimer;
         private int _remainingGrace = 5;
@@ -217,7 +216,6 @@ namespace LaptopGuard.Desktop.ViewModels
                 };
 
                 _cloudClient.Start();
-                StartWebcamStreamer(identity.DeviceId, cloudUrl);
             }
             catch (Exception ex)
             {
@@ -258,52 +256,6 @@ namespace LaptopGuard.Desktop.ViewModels
 
             _ipcClient.OnMessageReceived += HandleIpcMessage;
             try { _ipcClient.Start(); } catch { }
-        }
-
-        private void StartWebcamStreamer(string deviceId, string cloudUrl)
-        {
-            try
-            {
-                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
-                string[] potentialPaths = new[]
-                {
-                    Path.Combine(currentDir, "webcam_streamer.py"),
-                    Path.Combine(currentDir, "..", "..", "..", "..", "webcam_streamer.py"),
-                    @"E:\Laptop Securtiy Ai\laptopguard-ai\apps\windows\webcam_streamer.py"
-                };
-
-                string? streamerScript = null;
-                foreach (var p in potentialPaths)
-                {
-                    if (File.Exists(p))
-                    {
-                        streamerScript = Path.GetFullPath(p);
-                        break;
-                    }
-                }
-
-                if (streamerScript != null && File.Exists(streamerScript))
-                {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = "python",
-                        Arguments = $"\"{streamerScript}\" \"{deviceId}\"",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = false,
-                        RedirectStandardError = false
-                    };
-                    psi.EnvironmentVariables["LAPTOPGUARD_DEVICE_ID"] = deviceId;
-                    psi.EnvironmentVariables["LAPTOPGUARD_API_URL"] = cloudUrl.TrimEnd('/') + "/api/v1";
-
-                    _webcamProcess = Process.Start(psi);
-                    Console.WriteLine($"[DESKTOP] Started webcam streamer process (PID: {_webcamProcess?.Id}) for {deviceId}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[DESKTOP] Could not auto-start webcam streamer: {ex.Message}");
-            }
         }
 
         public void RefreshHardwareStatus()
