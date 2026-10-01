@@ -1,38 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Shield,
-  ShieldCheck,
-  ShieldAlert,
-  Zap,
-  Volume2,
-  VolumeX,
-  Lock,
-  Camera,
-  MapPin,
-  Smartphone,
-  Download,
-  ExternalLink,
-  ChevronRight,
-  CheckCircle2,
-  RefreshCw,
-  Laptop,
   ArrowRight,
-  Radio,
+  Camera,
+  Download,
   Eye,
-  Activity,
-  Sparkles,
-  Layers,
-  Cpu,
-  Play,
-  Apple,
-  X,
-  Share2,
-  PlusSquare,
-  Copy
+  KeyRound,
+  Laptop,
+  Lock,
+  MapPin,
+  Radio,
+  ShieldCheck,
+  Smartphone,
+  X
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
-import { getDownloadUrl } from '../services/api';
+import { api, downloadOwnerRelease } from '../services/api';
 import { BrandLogo } from '../components/BrandLogo';
+import { SystemShowcase } from '../components/SystemShowcase';
+import { OWNER_ACCESS_STORAGE_KEY } from '../config/ownerAccess';
 
 interface LandingViewProps {
   onLaunchConsole: () => void;
@@ -43,6 +28,26 @@ interface LandingViewProps {
   onLockMasterAccess?: () => void;
 }
 
+type ProtectedAction = 'dashboard' | 'mobile' | 'windows' | 'android';
+
+const features = [
+  {
+    icon: Lock,
+    title: 'Hardware theft response',
+    body: 'LaptopGuard watches charger disconnects, lock state, and security events so the owner can react before the device disappears.'
+  },
+  {
+    icon: Camera,
+    title: 'Owner-authorized visibility',
+    body: 'Live webcam and screen views are guarded behind account login, trusted controller checks, and an owner key.'
+  },
+  {
+    icon: MapPin,
+    title: 'Real device location',
+    body: 'The console reports the laptop location from the Windows device itself instead of showing decorative map data.'
+  }
+];
+
 export const LandingView: React.FC<LandingViewProps> = ({
   onLaunchConsole,
   onOpenMobileView,
@@ -51,941 +56,253 @@ export const LandingView: React.FC<LandingViewProps> = ({
   onOpenIntro,
   onLockMasterAccess
 }) => {
-  const { user, isAuthenticated, logoutUser, selectedDevice, isAlarmActive } = useSecurity();
-  const [showIosModal, setShowIosModal] = useState<boolean>(false);
-  const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+  const { user, isAuthenticated, logoutUser } = useSecurity();
+  const [pendingAction, setPendingAction] = useState<ProtectedAction | null>(null);
+  const [keyValue, setKeyValue] = useState('');
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [isVerifyingKey, setIsVerifyingKey] = useState(false);
+  const releaseLabel = useMemo(() => 'v2.0.2 private owner build', []);
 
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(window.location.origin).then(() => {
-      setCopiedUrl(true);
-      setTimeout(() => setCopiedUrl(false), 2500);
-    }).catch(() => {});
+  const completeAction = async (action: ProtectedAction, ownerKey?: string) => {
+    if (action === 'dashboard') onLaunchConsole();
+    if (action === 'mobile') onOpenMobileView();
+    if (action === 'windows') await downloadOwnerRelease('windows-setup', ownerKey || keyValue);
+    if (action === 'android') await downloadOwnerRelease('android-apk', ownerKey || keyValue);
   };
 
-  // Interactive Live Simulator in the Hero Card
-  const [simAcConnected, setSimAcConnected] = useState<boolean>(true);
-  const [simAlarmActive, setSimAlarmActive] = useState<boolean>(false);
-  const [simCountdown, setSimCountdown] = useState<number>(15);
-
-  const toggleSimAc = () => {
-    if (simAcConnected) {
-      // Disconnect AC -> instant 500ms watchdog trigger
-      setSimAcConnected(false);
-      setSimAlarmActive(true);
-      setSimCountdown(15);
-    } else {
-      // Reconnect AC -> disarmed/restored
-      setSimAcConnected(true);
-      setSimAlarmActive(false);
+  const runProtectedAction = (action: ProtectedAction) => {
+    if (sessionStorage.getItem(OWNER_ACCESS_STORAGE_KEY) === 'true') {
+      void completeAction(action);
+      return;
     }
+    setPendingAction(action);
+    setKeyValue('');
+    setKeyError(null);
   };
 
-  useEffect(() => {
-    let timer: any;
-    if (simAlarmActive) {
-      timer = setInterval(() => {
-        setSimCountdown((prev) => {
-          if (prev <= 1) {
-            setSimAlarmActive(false);
-            clearInterval(timer);
-            return 15;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+  const verifyOwnerKey = async () => {
+    if (!pendingAction) return;
+    setIsVerifyingKey(true);
+    setKeyError(null);
+    try {
+      await api.verifyOwnerAccess(keyValue);
+    } catch (_) {
+      setKeyError('Invalid owner key');
+      setIsVerifyingKey(false);
+      return;
     }
-    return () => clearInterval(timer);
-  }, [simAlarmActive]);
-
-  const handleDownloadSetup = () => {
-    window.location.href = getDownloadUrl('windows-setup');
-  };
-
-  const handleDownloadExe = () => {
-    window.location.href = getDownloadUrl('windows-exe');
-  };
-
-  const handleDownloadWindows = () => {
-    window.location.href = getDownloadUrl('windows-agent');
-  };
-
-  const handleDownloadAndroid = () => {
-    window.location.href = getDownloadUrl('android-apk');
+    sessionStorage.setItem(OWNER_ACCESS_STORAGE_KEY, 'true');
+    const action = pendingAction;
+    setPendingAction(null);
+    try {
+      await completeAction(action, keyValue);
+      setKeyValue('');
+    } catch (error: any) {
+      setPendingAction(action);
+      setKeyError(error?.message || 'Download failed');
+    } finally {
+      setIsVerifyingKey(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F4FA] text-slate-800 relative selection:bg-blue-600 selection:text-white font-sans overflow-x-hidden">
-      {/* Soft Ambient Liquid Glow Mesh with Live Gentle Floating Animation */}
-      <div className="ambient-liquid-glow pointer-events-none">
-        <div className="ambient-blob-1" />
-        <div className="ambient-blob-2" />
-        <div className="ambient-blob-3" />
-      </div>
-
-      {/* Top Floating iOS Frosted Glass Navigation Bar */}
-      <header className="sticky top-3 sm:top-4 z-50 w-full px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto">
-        <div className="h-16 sm:h-18 px-4 sm:px-7 ios-jelly-card flex items-center justify-between shadow-sm">
-          {/* Brand Logo */}
-          <BrandLogo
-            size="md"
-            subtitle="Sovereign Hardware Protection"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          />
-
-          {/* Center Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-600">
-            <a href="#video-demo" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-50/80 border border-cyan-200/80 text-cyan-800">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-              <span>AI Video Demo</span>
-            </a>
-            <a href="#features" className="hover:text-blue-600 transition-colors">Core Sentinel</a>
-            <a href="#simulator" className="hover:text-blue-600 transition-colors">Live Simulation</a>
-            <a href="#mobile-app" className="hover:text-blue-600 transition-colors">Mobile Remote</a>
-            <a href="#downloads" className="hover:text-blue-600 transition-colors">Downloads & APK</a>
+    <div className="min-h-screen bg-[#F7F9FC] text-slate-950 font-sans selection:bg-cyan-500 selection:text-white">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <BrandLogo size="md" subtitle="Private Hardware Security" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
+          <nav className="hidden items-center gap-6 text-xs font-bold text-slate-500 lg:flex">
+            <a href="#system" className="hover:text-slate-950">System</a>
+            <a href="#protection" className="hover:text-slate-950">Protection</a>
+            <a href="#downloads" className="hover:text-slate-950">Private Downloads</a>
           </nav>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-white/70 border border-slate-200/80 text-xs shadow-xs">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-bold flex items-center justify-center text-[10px] flex-shrink-0">
-                    {user.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'ME'}
-                  </div>
-                  <span className="font-bold text-slate-800 hidden sm:inline max-w-[100px] truncate">
-                    {user.full_name || user.email}
-                  </span>
-                </div>
-                <button
-                  onClick={onLogout || logoutUser}
-                  className="ios-bubble-btn py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-2xl bg-white/80 hover:bg-rose-50 text-rose-600 text-xs font-bold border border-slate-200/80 hover:border-rose-200 shadow-xs cursor-pointer transition-all"
-                  title="Sign Out"
-                >
-                  <span className="hidden sm:inline">Sign Out</span>
-                  <span className="sm:hidden">Exit</span>
-                </button>
-              </div>
+              <button
+                onClick={onLogout || logoutUser}
+                className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                Sign Out
+              </button>
             ) : (
               onOpenAuth && (
                 <button
                   onClick={onOpenAuth}
-                  className="ios-bubble-btn hidden sm:flex items-center gap-1.5 py-2 px-3.5 rounded-2xl bg-white/80 hover:bg-white text-blue-600 hover:text-blue-700 text-xs font-bold border border-blue-200/80 shadow-xs cursor-pointer"
+                  className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex"
                 >
-                  <span>Sign In</span>
+                  Owner Login
                 </button>
               )
             )}
-
-            {onLockMasterAccess && (
-              <button
-                onClick={onLockMasterAccess}
-                className="ios-bubble-btn p-2 sm:py-2.5 sm:px-3 rounded-2xl bg-rose-50/80 hover:bg-rose-100 text-rose-600 border border-rose-200/80 shadow-xs cursor-pointer flex items-center gap-1.5"
-                title="Lock Master Access (PIN Required)"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span className="hidden md:inline text-xs font-bold">Lock Access</span>
-              </button>
-            )}
-
             <button
-              onClick={onOpenMobileView}
-              className="ios-bubble-btn flex items-center gap-1.5 py-2 sm:py-2.5 px-3 sm:px-4 rounded-2xl bg-white/80 hover:bg-white text-slate-700 text-xs font-bold border border-slate-200/80 shadow-xs cursor-pointer"
-              title="Open Mobile Phone View"
+              onClick={() => runProtectedAction('dashboard')}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800"
             >
-              <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
-              <span className="hidden xs:inline sm:inline">Mobile Phone</span>
-            </button>
-
-            <button
-              onClick={onLaunchConsole}
-              className="ios-bubble-btn sheen-glow flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3.5 sm:px-5 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 cursor-pointer"
-            >
-              <span>{isAuthenticated ? 'Console' : 'Dashboard'}</span>
-              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <KeyRound className="h-4 w-4" />
+              Owner Console
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-8 sm:pt-12 pb-16 sm:pb-24 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          
-          {/* Left Column: Headline, Highlights & Actions */}
-          <div className="lg:col-span-7 space-y-6">
-            
-            {/* Live Sentinel Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-blue-200/80 text-blue-600 text-xs font-bold shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Sovereign Anti-Theft Sentinel v1.5.0 Active</span>
-              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">• 500ms Watchdog</span>
-            </div>
-
-            {/* Hero Title */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
-              Protect Your Laptop.{' '}
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 bg-clip-text text-transparent">
-                Wherever You Go.
-              </span>
-            </h1>
-
-            {/* Subtitle */}
-            <p className="text-sm sm:text-base lg:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl">
-              Turn your Windows laptop into an intelligent anti-theft sentinel. Instant <strong>500ms AC charger disconnect watchdog</strong>, 15-second smart auto-silence siren, authorized live webcam verification, and real-time remote lock from any smartphone.
-            </p>
-
-            {/* Quick Action Jelly Buttons */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                onClick={onLaunchConsole}
-                className="ios-bubble-btn sheen-glow flex items-center gap-2 py-3 sm:py-3.5 px-5 sm:px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-extrabold shadow-xl shadow-blue-500/25 cursor-pointer"
-              >
-                <span>{isAuthenticated ? 'Open Sentinel Dashboard' : 'Launch Dashboard'}</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={handleDownloadSetup}
-                className="ios-bubble-btn flex items-center gap-2 py-3 sm:py-3.5 px-4 sm:px-5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-bold border border-slate-200/90 shadow-xs cursor-pointer"
-              >
-                <Download className="w-4 h-4 text-blue-600" />
-                <span>Windows Setup (.exe)</span>
-              </button>
-
-              <button
-                onClick={handleDownloadAndroid}
-                className="ios-bubble-btn flex items-center gap-2 py-3 sm:py-3.5 px-4 sm:px-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs sm:text-sm font-bold border border-emerald-200 shadow-xs cursor-pointer"
-              >
-                <Download className="w-4 h-4 text-emerald-600" />
-                <span>Android App (.apk)</span>
-              </button>
-
-              <button
-                onClick={() => setShowIosModal(true)}
-                className="ios-bubble-btn flex items-center gap-2 py-3 sm:py-3.5 px-4 sm:px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs cursor-pointer"
-              >
-                <Apple className="w-4 h-4 text-white" />
-                <span>Apple iOS</span>
-              </button>
-
-              {onOpenIntro && (
-                <button
-                  onClick={onOpenIntro}
-                  className="ios-bubble-btn flex items-center gap-1.5 py-3 sm:py-3.5 px-4 rounded-2xl bg-cyan-50/80 hover:bg-cyan-100 text-cyan-800 text-xs sm:text-sm font-bold border border-cyan-200 shadow-xs cursor-pointer"
-                >
-                  <Play className="w-3.5 h-3.5 text-cyan-600 fill-cyan-600" />
-                  <span>Watch Intro</span>
-                </button>
-              )}
-            </div>
-
-            {/* Hardware Trust Badges */}
-            <div className="pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-semibold text-slate-600">
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-white/40 border border-slate-200/50">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                <span>500ms Hardware Watchdog</span>
+      <main>
+        <section className="relative overflow-hidden border-b border-slate-200 bg-white">
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(14,165,233,0.08),transparent_35%,rgba(168,85,247,0.08)_70%,transparent)]" />
+          <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+            <div className="flex flex-col justify-center">
+              <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-cyan-800">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                LaptopGuard AI {releaseLabel}
               </div>
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-white/40 border border-slate-200/50">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                <span>15s Smart Auto-Silence</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-white/40 border border-slate-200/50">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                <span>Non-Covert Privacy LED</span>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right Column: Next-Gen Translucent 3D Sentinel Card & Live Simulation */}
-          <div id="simulator" className="lg:col-span-5 relative">
-            <div className={`ios-jelly-card p-6 sm:p-7 rounded-[32px] sm:rounded-[36px] shadow-2xl relative overflow-hidden transition-all duration-300 ${
-              simAlarmActive ? 'ring-2 ring-rose-500 shadow-rose-500/20' : ''
-            }`}>
-              
-              {/* Card Header */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-rose-400" />
-                  <div className="w-3 h-3 rounded-full bg-amber-400" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                  <span className="text-[11px] sm:text-xs font-bold text-slate-500 font-mono ml-1.5 truncate">
-                    Guarded Windows Laptop • Sentinel Active
-                  </span>
-                </div>
-                <span className={`px-2.5 py-0.5 text-[10px] font-black rounded-full uppercase tracking-wider flex items-center gap-1 border ${
-                  simAlarmActive
-                    ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse'
-                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${simAlarmActive ? 'bg-rose-500' : 'bg-emerald-500 animate-ping'}`} />
-                  <span>{simAlarmActive ? `SIREN ACTIVE (${simCountdown}s)` : '100% ARMED'}</span>
-                </span>
-              </div>
-
-              {/* Center 3D Laptop Visual with Screen Glow */}
-              <div className="my-5 relative flex flex-col items-center">
-                {/* Ambient glow behind laptop */}
-                <div className={`absolute inset-0 rounded-full filter blur-2xl transition-all duration-500 -z-10 ${
-                  simAlarmActive ? 'bg-rose-500/30' : 'bg-cyan-400/20'
-                }`} />
-
-                <div className="w-60 sm:w-68 h-40 sm:h-44 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-3 flex flex-col justify-between border border-slate-700 shadow-2xl relative transition-all">
-                  
-                  {/* Laptop Screen Display */}
-                  <div className={`w-full h-28 sm:h-32 rounded-xl p-1 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-inner transition-colors duration-300 ${
-                    simAlarmActive
-                      ? 'bg-gradient-to-br from-rose-600 via-red-500 to-amber-600 animate-pulse'
-                      : 'bg-gradient-to-br from-blue-600 via-cyan-500 to-indigo-700'
-                  }`}>
-                    <div className="w-full h-full bg-slate-950/80 rounded-lg p-2 flex flex-col items-center justify-center text-white">
-                      {simAlarmActive ? (
-                        <>
-                          <Volume2 className="w-8 h-8 text-rose-400 mb-1 animate-bounce" />
-                          <span className="text-[11px] font-black text-rose-300 tracking-wider">
-                            AC POWER SEVERED!
-                          </span>
-                          <span className="text-[9px] text-amber-300 font-mono mt-0.5">
-                            500ms Watchdog Triggered Siren
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="w-7 h-7 text-cyan-300 mb-1 animate-pulse" />
-                          <span className="text-[11px] font-extrabold tracking-wide">
-                            LAPTOPGUARD AI SENTINEL
-                          </span>
-                          <span className="text-[9px] text-cyan-200 font-mono mt-0.5">
-                            AC WATCHDOG: 500MS POLL
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* Corner hardware ping beacon */}
-                    <div className={`absolute top-1.5 right-2 w-2 h-2 rounded-full ${
-                      simAlarmActive ? 'bg-rose-400 animate-ping' : 'bg-emerald-400 animate-ping'
-                    }`} />
-                  </div>
-
-                  {/* Laptop Keyboard Base & Trackpad */}
-                  <div className="w-full h-3 rounded bg-slate-700 flex items-center justify-center">
-                    <div className="w-12 h-0.5 rounded bg-slate-500" />
-                  </div>
-                </div>
-
-                {/* Interactive Simulation Switch Button */}
-                <div className="mt-4 flex items-center gap-2">
-                  <button
-                    onClick={toggleSimAc}
-                    className={`ios-bubble-btn px-4 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-2 border shadow-sm transition-all cursor-pointer ${
-                      simAcConnected
-                        ? 'bg-white hover:bg-rose-50 text-rose-600 border-rose-200'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-emerald-500/25'
-                    }`}
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    <span>{simAcConnected ? 'Simulate Unplugging Charger' : 'Restore AC Charger (Plug in)'}</span>
-                  </button>
-                  {simAlarmActive && (
-                    <button
-                      onClick={() => setSimAlarmActive(false)}
-                      className="ios-bubble-btn px-3 py-2 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs cursor-pointer"
-                    >
-                      <VolumeX className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Mute</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Live Telemetry Bubble Chips */}
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="p-3 rounded-2xl bg-white/75 border border-slate-200/80 shadow-xs">
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Battery & AC Power</span>
-                  <span className={`font-extrabold text-xs sm:text-sm flex items-center gap-1 mt-0.5 ${
-                    simAcConnected ? 'text-slate-900' : 'text-rose-600'
-                  }`}>
-                    {simAcConnected ? '99% (AC Plugged)' : '99% (UNPLUGGED!)'}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/75 border border-slate-200/80 shadow-xs">
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">GPS Radar Triangulation</span>
-                  <span className="text-slate-900 font-extrabold text-xs sm:text-sm block mt-0.5 truncate">
-                    Colombo, Sri Lanka
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/75 border border-slate-200/80 shadow-xs">
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Siren Deterrent</span>
-                  <span className={`font-extrabold text-xs sm:text-sm block mt-0.5 ${
-                    simAlarmActive ? 'text-rose-600' : 'text-emerald-600'
-                  }`}>
-                    {simAlarmActive ? `Ringing (${simCountdown}s)` : 'Standby (15s Auto-Mute)'}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/75 border border-slate-200/80 shadow-xs">
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Encrypted Tunnel</span>
-                  <span className="text-blue-600 font-extrabold text-xs sm:text-sm font-mono block mt-0.5">
-                    WSS Live (60s Nonce)
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Cinematic AI Video Showcase Section */}
-      <section id="video-demo" className="py-12 sm:py-16 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto">
-        <div className="relative rounded-[32px] sm:rounded-[40px] bg-gradient-to-b from-slate-950 via-[#070F22] to-slate-950 border border-cyan-500/30 shadow-[0_0_60px_rgba(0,242,254,0.15)] overflow-hidden p-5 sm:p-10 text-white">
-          
-          {/* Subtle Cyber Grid Matrix Background */}
-          <div className="absolute inset-0 pointer-events-none opacity-10">
-            <div 
-              className="absolute inset-0"
-              style={{
-                backgroundImage: 'linear-gradient(#00F2FE 1px, transparent 1px), linear-gradient(90deg, #00F2FE 1px, transparent 1px)',
-                backgroundSize: '40px 40px'
-              }}
-            />
-          </div>
-
-          <div className="relative z-10 max-w-4xl mx-auto space-y-6">
-            
-            {/* Header Badge & Title */}
-            <div className="text-center space-y-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 text-xs font-mono font-bold shadow-lg">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>OFFICIAL AI DEMO // GOOGLE FLOW ENGINE</span>
-              </div>
-              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
-                Experience Autonomous Cyber Defense in Action
-              </h2>
-              <p className="text-xs sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                Watch how LaptopGuard AI detects hardware disconnects in <strong>500ms</strong>, scans unauthorized faces with Neural YuNet DNN, and locks rogue USB devices in real time.
+              <h1 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
+                Personal laptop security with an owner-only control room.
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+                A private anti-theft system for Windows laptops: charger watchdog, remote lock, live verification, event history, and mobile control. Public visitors can understand the product, but the actual console and installers stay behind an owner key.
               </p>
-            </div>
-
-            {/* Cinematic High-Definition Video Player */}
-            <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-cyan-500/40 shadow-2xl bg-black group">
-              <video
-                controls
-                playsInline
-                preload="metadata"
-                poster="/flow_video_poster.jpg"
-                className="w-full aspect-video object-contain bg-black"
-                src="/laptopguard_flow_demo.mp4"
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-
-            {/* Video Feature Highlights & Actions */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 text-xs">
-              {/* Feature Chips */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-slate-300 font-mono text-[11px]">
-                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                  <span>500ms Watchdog</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                  <span>Neural Face Reticle</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>Fluid 30FPS Mirror</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  <span>BadUSB Defense</span>
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2.5 flex-shrink-0">
-                <a
-                  href="/laptopguard_flow_demo.mp4"
-                  download="LaptopGuard_AI_Flow_Demo.mp4"
-                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold transition-all flex items-center gap-2 border border-white/10 cursor-pointer"
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button
+                  onClick={() => runProtectedAction('dashboard')}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-xl shadow-cyan-600/20 hover:bg-cyan-500"
                 >
-                  <Download className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Download MP4 (18 MB)</span>
+                  Unlock Private Console
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+                <a
+                  href="#system"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+                >
+                  View Intro
+                  <Eye className="h-4 w-4" />
                 </a>
               </div>
             </div>
 
+            <SystemShowcase />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Core Hardware Sentinel Features */}
-      <section id="features" className="py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto border-t border-slate-200/60">
-        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
-          <span className="jelly-pill px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50/90 border border-blue-200 shadow-xs">
-            Hardware Sovereign Defense
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Engineered Specifically for Real Windows Laptops
-          </h2>
-          <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            No simulated mock data. LaptopGuard AI interacts directly with native Win32 hardware APIs, power status registers, and your physical webcam.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {/* Feature 1 */}
-          <div className="ios-jelly-card p-6 rounded-3xl space-y-3.5 hover:shadow-lg transition-all">
-            <div className="bubble-icon w-12 h-12 bubble-amber shadow-xs">
-              <Zap className="w-6 h-6 text-amber-600" />
+        <section id="protection" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">What It Does</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Built for one owner, not the crowd.</h2>
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">500ms AC Charger Watchdog</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              If someone unplugs your laptop charger at a library, café, or office while armed, the sentinel detects the drop in power within 500 milliseconds and instantly triggers the siren and mobile alert.
-            </p>
-          </div>
-
-          {/* Feature 2 */}
-          <div className="ios-jelly-card p-6 rounded-3xl space-y-3.5 hover:shadow-lg transition-all">
-            <div className="bubble-icon w-12 h-12 bubble-rose shadow-xs">
-              <Volume2 className="w-6 h-6 text-rose-600" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">15s Smart Auto-Silence Siren</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Automatically unmutes and boosts your Windows speaker volume to 100% to draw public attention. Built with a smart 15-second auto-timeout so it never sounds endlessly, plus instant 1-touch mute.
-            </p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="ios-jelly-card p-6 rounded-3xl space-y-3.5 hover:shadow-lg transition-all">
-            <div className="bubble-icon w-12 h-12 bubble-blue shadow-xs">
-              <Lock className="w-6 h-6 text-blue-600" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">Remote Workstation Lock</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Transmit a cryptographically signed instruction over WebSocket to immediately lock the Windows OS via native <code className="text-blue-600 font-mono font-bold">user32.LockWorkStation</code>.
-            </p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="ios-jelly-card p-6 rounded-3xl space-y-3.5 hover:shadow-lg transition-all">
-            <div className="bubble-icon w-12 h-12 bubble-cyan shadow-xs">
-              <Camera className="w-6 h-6 text-cyan-600" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">Non-Covert Physical Webcam Stream</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Live authorized video feed direct from your laptop's webcam. Privacy compliant: the hardware LED remains illuminated and sessions are limited to authorized owner requests.
-            </p>
-          </div>
-
-          {/* Feature 5 */}
-          <div className="ios-jelly-card p-6 rounded-3xl space-y-3.5 hover:shadow-lg transition-all">
-            <div className="bubble-icon w-12 h-12 bubble-mint shadow-xs">
-              <MapPin className="w-6 h-6 text-emerald-600" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">OpenStreetMap Geolocation Radar</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Continuous Wi-Fi BSSID triangulation and IP mapping displayed on clean CartoDB Voyager pastel light tiles, centered accurately on your real location in Sri Lanka.
-            </p>
-          </div>
-
-          {/* Feature 6 */}
-          <div className="ios-jelly-card p-6 rounded-3xl space-y-3.5 hover:shadow-lg transition-all">
-            <div className="bubble-icon w-12 h-12 bubble-violet shadow-xs">
-              <Smartphone className="w-6 h-6 text-indigo-600" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">Mobile Phone Remote with OTA Updates</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Control your laptop from your Android phone or mobile browser. Over-The-Air (OTA) architecture ensures your mobile companion updates automatically whenever new backend features release.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Mobile Phone Remote & Over-The-Air Auto-Update Showcase */}
-      <section id="mobile-app" className="py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto border-t border-slate-200/60">
-        <div className="ios-jelly-card p-6 sm:p-10 lg:p-12 rounded-[32px] sm:rounded-[40px] grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-          
-          <div className="lg:col-span-7 space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-bold">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500" />
-              <span>Over-The-Air (OTA) Auto-Update Engine</span>
-            </div>
-
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Control Your Laptop From Your Phone. Always Up-to-Date.
-            </h2>
-
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Whether you are across the room or across the city, your phone acts as the command center for your laptop. Tap to arm before stepping away, mute sirens instantly, inspect live camera frames, or lock the machine.
-            </p>
-
-            <div className="space-y-2.5 text-xs font-semibold text-slate-700 pt-1">
-              <div className="flex items-center gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-bold text-[10px]">✓</div>
-                <span><strong>Instant OTA Updates:</strong> Every time we deploy new security features, your mobile controller auto-refreshes seamlessly.</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-bold text-[10px]">✓</div>
-                <span><strong>Installable Android APK & PWA:</strong> Download the standalone APK or install directly from your mobile browser in 1 click.</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-bold text-[10px]">✓</div>
-                <span><strong>Real-Time WebSocket Push:</strong> Receives battery drops, AC unplug alerts, and camera snapshots in under a second.</span>
-              </div>
-            </div>
-
-            <div className="pt-3 flex flex-wrap items-center gap-3">
+            {onOpenIntro && (
               <button
-                onClick={onOpenMobileView}
-                className="ios-bubble-btn py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 cursor-pointer"
+                onClick={onOpenIntro}
+                className="inline-flex w-fit items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-800 shadow-sm hover:bg-slate-50"
               >
-                Launch Mobile Controller Simulator
+                Play App Intro
+                <Radio className="h-4 w-4" />
               </button>
-              <button
-                onClick={handleDownloadAndroid}
-                className="ios-bubble-btn py-3 px-5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-800 text-xs font-bold shadow-xs cursor-pointer"
-              >
-                Download Android APK (v1.5.0)
-              </button>
-            </div>
+            )}
           </div>
-
-          {/* Simulated Mobile Phone Visual */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div className="w-68 sm:w-76 rounded-[44px] bg-slate-950 p-3.5 border-[6px] border-slate-800 shadow-2xl relative">
-              {/* Phone Speaker Notch */}
-              <div className="w-20 h-3.5 bg-slate-800 rounded-full mx-auto mb-2.5" />
-
-              {/* Phone Screen Display */}
-              <div className="w-full rounded-[30px] bg-[#F0F4FA] p-3.5 text-slate-800 space-y-3 shadow-inner">
-                <div className="flex items-center justify-between text-[10px] font-bold">
-                  <span className="text-slate-400">Windows 11 Sentinel</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">ARMED</span>
-                </div>
-
-                {/* Status card */}
-                <div className="p-3 rounded-2xl bg-white shadow-xs border border-slate-200/80">
-                  <div className="flex justify-between items-center text-xs font-extrabold text-slate-900">
-                    <span>Power Sentinel</span>
-                    <span className="text-emerald-600">AC Plugged</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Battery: 99% • Watchdog Active</p>
-                </div>
-
-                {/* Mobile action buttons */}
-                <div className="grid grid-cols-2 gap-2 text-center text-[10px] font-bold">
-                  <div className="p-2.5 rounded-xl bg-amber-500 text-white shadow-xs">
-                    🔊 Sound Siren
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-xs">
-                    🔒 Lock Windows
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-cyan-600 text-white shadow-xs">
-                    📷 Live Camera
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-rose-500 text-white shadow-xs">
-                    🚨 Lost Mode
-                  </div>
-                </div>
-
-                {/* Auto update banner pill */}
-                <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold flex items-center justify-center gap-1.5">
-                  <RefreshCw className="w-3 h-3 text-indigo-600" />
-                  <span>OTA Auto-Update Active (v1.5.0)</span>
-                </div>
-              </div>
-
-              {/* Bottom Home Indicator Bar */}
-              <div className="w-24 h-1 bg-slate-700 rounded-full mx-auto mt-2.5" />
-            </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {features.map((feature) => (
+              <article key={feature.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <feature.icon className="h-8 w-8 text-cyan-600" />
+                <h3 className="mt-5 text-lg font-black text-slate-950">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{feature.body}</p>
+              </article>
+            ))}
           </div>
+        </section>
 
-        </div>
-      </section>
-
-      {/* Unified Downloads & Client Hub */}
-      <section id="downloads" className="py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto border-t border-slate-200/60">
-        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
-          <span className="jelly-pill px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50/90 border border-blue-200 shadow-xs">
-            Multi-Platform Sentinel Hub
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Deploy LaptopGuard AI Across All Devices
-          </h2>
-          <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            One-touch downloads for Windows, Android, and Apple iOS. Built for any laptop manufacturer in the world (HP, Dell, Lenovo, Asus, Acer, Apple).
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* Card 1: Windows Desktop Sentinel Setup */}
-          <div className="ios-jelly-card p-6 sm:p-7 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="bubble-icon w-12 h-12 bubble-blue shadow-xs">
-                  <Laptop className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
-                  v1.5.2 Setup Wizard
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900">Windows PC Sentinel</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Windows 10 & 11 (All Laptop Brands)</p>
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Native Win32 hardware sentinel. Professional Setup Wizard installs directly onto your PC with Desktop shortcut and uninstaller.
+        <section id="downloads" className="border-y border-slate-200 bg-slate-950 px-4 py-14 text-white sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Private Owner Downloads</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Latest Windows installer and Android APK are key protected.</h2>
+              <p className="mt-4 text-sm leading-7 text-slate-300">
+                The public page is safe to share on LinkedIn. Installing the real owner tools requires the special owner key.
               </p>
-
-              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>500ms AC disconnect loop & siren</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Hardware Unique MachineGuid pairing</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Over-The-Air automated background updates</span>
-                </div>
-              </div>
             </div>
-
-            <div className="pt-4">
-              <button
-                onClick={handleDownloadSetup}
-                className="ios-bubble-btn sheen-glow w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Windows Setup (.exe)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: Android Mobile Companion APK */}
-          <div className="ios-jelly-card p-6 sm:p-7 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="bubble-icon w-12 h-12 bubble-cyan shadow-xs">
-                  <Smartphone className="w-6 h-6 text-cyan-600" />
-                </div>
-                <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
-                  v1.5.2 • 4.7 MB APK
-                </span>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+                <Laptop className="h-9 w-9 text-cyan-300" />
+                <h3 className="mt-5 text-xl font-black">Windows PC Sentinel</h3>
+                <p className="mt-2 text-sm text-slate-300">Setup wizard for Windows 10/11. Installer also asks for the owner password before extraction.</p>
+                <button
+                  onClick={() => runProtectedAction('windows')}
+                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 hover:bg-cyan-50"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Windows Setup
+                </button>
               </div>
-
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900">Android Mobile App</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Android 9.0+ Smartphones & Tablets</p>
+              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+                <Smartphone className="h-9 w-9 text-emerald-300" />
+                <h3 className="mt-5 text-xl font-black">Android Mobile Controller</h3>
+                <p className="mt-2 text-sm text-slate-300">Latest APK with private app access gate and protected remote-control dashboard.</p>
+                <button
+                  onClick={() => runProtectedAction('android')}
+                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-black text-slate-950 hover:bg-emerald-300"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Android APK
+                </button>
               </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Dedicated security controller for Android. Ultra-light 4.7 MB package with live webcam monitoring, one-touch siren silencing, and instant remote lock.
-              </p>
-
-              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Ultra-fast 4.7 MB direct download</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Instant Over-The-Air auto updating</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Encrypted device command routing</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 flex gap-2">
-              <button
-                onClick={handleDownloadAndroid}
-                className="ios-bubble-btn sheen-glow flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Android App (.apk)</span>
-              </button>
             </div>
           </div>
+        </section>
+      </main>
 
-          {/* Card 3: Apple iOS Companion App */}
-          <div className="ios-jelly-card p-6 sm:p-7 rounded-[32px] space-y-5 border border-slate-200/80 shadow-md flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="bubble-icon w-12 h-12 bubble-mint shadow-xs bg-slate-900 text-white flex items-center justify-center">
-                  <Apple className="w-6 h-6 text-white" />
-                </div>
-                <span className="jelly-pill px-3 py-1 text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                  iOS 15+ Native PWA
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900">Apple iOS Companion</h3>
-                <p className="text-xs text-slate-500 mt-0.5">iPhone, iPad & Mac (Safari Direct)</p>
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Liquid Glass security console designed natively for Apple iOS. Instant installation via Safari 'Add to Home Screen' with zero app store delays.
-              </p>
-
-              <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Full iOS Liquid Glass bubble interface</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>Master PIN security lock (PIN: 6728)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  <span>No APK needed — installs directly in Safari</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4">
-              <button
-                onClick={() => setShowIosModal(true)}
-                className="ios-bubble-btn sheen-glow w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white text-xs font-bold shadow-lg shadow-slate-900/25 cursor-pointer"
-              >
-                <Apple className="w-4 h-4 text-white" />
-                <span>Get for iPhone / iPad</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 sm:py-10 px-4 sm:px-6 lg:px-8 max-w-[1920px] mx-auto border-t border-slate-200/60 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
-          <BrandLogo size="sm" subtitle={false} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
-          <span className="hidden md:inline text-slate-400">• Sovereign Hardware Anti-Theft & Surveillance Defense</span>
+          <BrandLogo size="sm" subtitle={false} />
+          <span>Private anti-theft software by LaptopGuard AI</span>
         </div>
-
         <div className="flex items-center gap-4">
-          <button onClick={onLaunchConsole} className="hover:text-blue-600 font-semibold cursor-pointer">
-            Cloud Console
-          </button>
-          <button onClick={onOpenMobileView} className="hover:text-blue-600 font-semibold cursor-pointer">
-            Phone Remote
-          </button>
-          <a href="#downloads" className="hover:text-blue-600 font-semibold">
-            Downloads
-          </a>
-          <span className="font-mono text-[11px] text-slate-400">v1.5.0 Production Signed</span>
+          <button onClick={() => runProtectedAction('mobile')} className="hover:text-slate-950">Phone View</button>
+          {onLockMasterAccess && <button onClick={onLockMasterAccess} className="hover:text-slate-950">Lock Session</button>}
+          <span>{releaseLabel}</span>
         </div>
       </footer>
 
-      {/* Apple iOS Guided Installation Modal */}
-      {showIosModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="ios-jelly-card bg-white/95 backdrop-blur-xl border border-white/60 p-6 sm:p-8 rounded-[36px] max-w-md w-full shadow-2xl relative space-y-5">
-            <button
-              onClick={() => setShowIosModal(false)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md">
-                <Apple className="w-6 h-6 text-white" />
-              </div>
+      {pendingAction && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900">Install on iPhone / iPad</h3>
-                <p className="text-xs text-slate-500">Native Progressive Web App (PWA)</p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5 text-xs text-slate-700 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/60">
-              <div className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
-                  1
-                </span>
-                <div>
-                  <strong className="text-slate-900">Open in Safari:</strong>
-                  <p className="text-slate-600 mt-0.5">Open this web page in Apple Safari on your iPhone or iPad.</p>
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                  <KeyRound className="h-5 w-5" />
                 </div>
+                <h3 className="mt-4 text-xl font-black text-slate-950">Owner Key Required</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  This area is private. Enter the special owner key to continue.
+                </p>
               </div>
-
-              <div className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
-                  2
-                </span>
-                <div>
-                  <strong className="text-slate-900">Tap the Share Button:</strong>
-                  <p className="text-slate-600 mt-0.5">
-                    Tap the <Share2 className="w-3.5 h-3.5 inline mx-1 text-blue-600" /> Share icon located at the bottom toolbar of Safari.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
-                  3
-                </span>
-                <div>
-                  <strong className="text-slate-900">Select "Add to Home Screen":</strong>
-                  <p className="text-slate-600 mt-0.5">
-                    Scroll down the options list and tap <PlusSquare className="w-3.5 h-3.5 inline mx-1 text-slate-700" /> <strong>Add to Home Screen</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center flex-shrink-0">
-                  4
-                </span>
-                <div>
-                  <strong className="text-slate-900">Tap "Add":</strong>
-                  <p className="text-slate-600 mt-0.5">Tap <strong>Add</strong> in the top-right corner. The LaptopGuard AI icon will appear right on your iOS home screen!</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1">
               <button
-                onClick={handleCopyUrl}
-                className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                onClick={() => setPendingAction(null)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-800"
               >
-                {copiedUrl ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span className="text-emerald-700">Link Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 text-slate-600" />
-                    <span>Copy Web URL</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  setShowIosModal(false);
-                  onOpenMobileView();
-                }}
-                className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
-              >
-                <span>Launch iOS Remote</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
+            <input
+              value={keyValue}
+              onChange={(event) => {
+                setKeyValue(event.target.value);
+                setKeyError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void verifyOwnerKey();
+              }}
+              autoFocus
+              type="password"
+              disabled={isVerifyingKey}
+              className="mt-6 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-950 outline-none ring-cyan-500/20 focus:border-cyan-500 focus:ring-4"
+              placeholder="Enter owner key"
+            />
+            {keyError && <p className="mt-3 text-xs font-black text-rose-600">{keyError}</p>}
+            <button
+              onClick={() => void verifyOwnerKey()}
+              disabled={isVerifyingKey}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {isVerifyingKey ? 'Verifying...' : 'Unlock'}
+              <ShieldCheck className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}

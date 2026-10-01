@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, User, ArrowRight, AlertTriangle, Sparkles, CheckCircle2, KeyRound } from 'lucide-react';
+import { Shield, Lock, Mail, User, ArrowRight, AlertTriangle, CheckCircle2, KeyRound } from 'lucide-react';
 import { api } from '../services/api';
 import { useSecurity } from '../context/SecurityContext';
 import { BrandLogo } from '../components/BrandLogo';
@@ -14,7 +14,7 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('laptopguard_last_email') || '');
   const [password, setPassword] = useState('');
-  const [secretPin, setSecretPin] = useState('6728');
+  const [secretPin, setSecretPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -26,6 +26,10 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
 
     if (!cleanEmail || !cleanPassword) {
       setErrorMsg('Please enter email and password.');
+      return;
+    }
+    if (isRegister && !/^\d{4,6}$/.test(secretPin)) {
+      setErrorMsg('Choose a security PIN containing 4 to 6 digits.');
       return;
     }
 
@@ -40,10 +44,9 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
       }
 
       if (res && res.access_token) {
-        const pinToSave = res.user?.secret_pin || secretPin || '6728';
         localStorage.setItem('laptopguard_last_email', cleanEmail);
-        localStorage.setItem('laptopguard_secret_pin', pinToSave);
-        sessionStorage.setItem('laptopguard_master_unlocked', 'true');
+        localStorage.removeItem('laptopguard_secret_pin');
+        sessionStorage.removeItem('laptopguard_master_unlocked');
         loginUser(res.user, res.access_token, res.controller_id, res.is_controller_trusted);
         onSuccess();
       }
@@ -52,12 +55,6 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fillDemo = () => {
-    setEmail('test@laptopguard.ai');
-    setPassword('password123');
-    setErrorMsg(null);
   };
 
   return (
@@ -176,14 +173,14 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
                   type="text"
                   maxLength={6}
                   required
-                  placeholder="6728"
+                  placeholder="4-6 digit PIN"
                   value={secretPin}
                   onChange={(e) => setSecretPin(e.target.value.replace(/\D/g, ''))}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-cyan-300 font-mono tracking-widest text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all font-bold"
                 />
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
-                Private PIN to unlock Sentinel Dashboard and Remote Controls (Default: 6728).
+                Choose a private PIN. It is verified securely and is never stored on this phone.
               </p>
             </div>
           )}
@@ -207,18 +204,6 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
           </button>
         </form>
 
-        {/* Demo One-Click Fill button for quick testing */}
-        <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-          <span className="text-slate-400">Testing the app?</span>
-          <button
-            type="button"
-            onClick={fillDemo}
-            className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 active:scale-95 transition-all"
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>Quick Demo Fill</span>
-          </button>
-        </div>
       </div>
 
       {/* 3. Security Highlights Footer */}

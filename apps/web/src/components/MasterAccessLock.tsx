@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, ShieldAlert, Lock, Unlock, KeyRound, AlertTriangle, Delete, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Shield, ShieldAlert, Lock, Unlock, KeyRound, AlertTriangle, Delete, ArrowRight, CheckCircle2, LogOut } from 'lucide-react';
+import { useSecurity } from '../context/SecurityContext';
+import { api } from '../services/api';
 
 interface MasterAccessLockProps {
   onUnlock: () => void;
 }
 
-const CORRECT_PIN = '6728';
-
 export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) => {
+  const { authorizeThisBrowser, logoutUser } = useSecurity();
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [ownerKey, setOwnerKey] = useState<string>('');
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Synthesize sound effects
@@ -67,12 +70,6 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
     const newPin = pin + digit;
     setPin(newPin);
 
-    const savedPin = localStorage.getItem('laptopguard_secret_pin') || CORRECT_PIN;
-    if (newPin === savedPin || newPin === CORRECT_PIN) {
-      validatePin(newPin);
-    } else if (newPin.length >= Math.max(savedPin.length, 4) && (newPin.length === 6 || newPin.length === savedPin.length)) {
-      validatePin(newPin);
-    }
   };
 
   const handleDelete = () => {
@@ -89,16 +86,30 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
     setError(null);
   };
 
-  const validatePin = (inputPin: string) => {
-    const savedPin = localStorage.getItem('laptopguard_secret_pin') || CORRECT_PIN;
-    if (inputPin === savedPin || inputPin === CORRECT_PIN) {
+  const handleResetSession = () => {
+    sessionStorage.removeItem('laptopguard_master_unlocked');
+    localStorage.removeItem('laptopguard_controller_id');
+    localStorage.removeItem('laptopguard_controller_trusted');
+    logoutUser();
+  };
+
+  const validatePin = async (inputPin: string) => {
+    if (!/^\d{4,6}$/.test(inputPin) || isSubmitting) {
+      setError('ENTER YOUR 4–6 DIGIT SECURITY PIN');
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const isValid = await authorizeThisBrowser(inputPin);
+      if (!isValid) throw new Error('Invalid PIN');
       setIsSuccess(true);
       playSound('success');
       sessionStorage.setItem('laptopguard_master_unlocked', 'true');
       setTimeout(() => {
         onUnlock();
       }, 700);
-    } else {
+    } catch (_) {
       playSound('error');
       setError('ACCESS DENIED • INVALID PASSCODE');
       setIsShaking(true);
@@ -106,7 +117,31 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
         setIsShaking(false);
         setPin('');
       }, 600);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const validateOwnerKey = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await api.verifyOwnerAccess(ownerKey);
+    } catch (_) {
+      playSound('error');
+      setError('ACCESS DENIED • INVALID OWNER KEY');
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 600);
+      setIsSubmitting(false);
+      return;
+    }
+    setIsSuccess(true);
+    playSound('success');
+    sessionStorage.setItem('laptopguard_master_unlocked', 'true');
+    setTimeout(() => {
+      onUnlock();
+    }, 700);
+    setIsSubmitting(false);
   };
 
   // Keyboard listener for desktop users
@@ -115,7 +150,7 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
       if (e.key >= '0' && e.key <= '9') {
         handleDigit(e.key);
       } else if (e.key === 'Enter') {
-        validatePin(pin);
+        void validatePin(pin);
       } else if (e.key === 'Backspace') {
         handleDelete();
       } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
@@ -192,7 +227,7 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
             </span>
           </h2>
           <p className="text-xs text-slate-400 mt-1 font-medium">
-            Enter your Secret Passcode or Master PIN to unlock console
+            Enter your Secret Passcode, Master PIN, or Owner Key to unlock console
           </p>
         </div>
 
@@ -273,6 +308,51 @@ export const MasterAccessLock: React.FC<MasterAccessLockProps> = ({ onUnlock }) 
             <Delete className="w-5 h-5" />
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => void validatePin(pin)}
+          disabled={isSuccess || isSubmitting || pin.length < 4}
+          className="w-full max-w-[280px] h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-black tracking-wider flex items-center justify-center gap-2 disabled:opacity-40 active:scale-95 transition-all"
+        >
+          <span>{isSubmitting ? 'VERIFYING…' : 'VERIFY & UNLOCK'}</span>
+          {!isSubmitting && <ArrowRight className="w-4 h-4" />}
+        </button>
+
+        <div className="mt-3 w-full max-w-[280px]">
+          <input
+            value={ownerKey}
+            onChange={(event) => {
+              setOwnerKey(event.target.value);
+              setError(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void validateOwnerKey();
+            }}
+            type="password"
+            disabled={isSubmitting || isSuccess}
+            placeholder="Owner key"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-xs font-bold text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+          />
+          <button
+            type="button"
+            onClick={() => void validateOwnerKey()}
+            disabled={isSubmitting || isSuccess || ownerKey.trim().length === 0}
+            className="mt-2 w-full rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-xs font-black text-cyan-200 disabled:opacity-40"
+          >
+            UNLOCK WITH OWNER KEY
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleResetSession}
+          disabled={isSubmitting || isSuccess}
+          className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-[11px] font-bold text-slate-300 hover:border-cyan-400/40 hover:text-cyan-200 disabled:opacity-40"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          RESET LOGIN / USE NEW PIN
+        </button>
 
         {/* Security Notice */}
         <div className="mt-3 text-center">

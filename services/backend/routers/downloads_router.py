@@ -1,14 +1,22 @@
 import os
 import io
 import zipfile
+import hmac
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from fastapi.responses import Response, JSONResponse, FileResponse, RedirectResponse
+from services.backend.config import hash_owner_key, settings
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["Downloads & Updates"])
 
-CURRENT_VERSION = "1.7.0"
-RELEASE_DATE = "2026-09-27"
+CURRENT_VERSION = "2.0.0"
+RELEASE_DATE = "2026-10-01"
+
+def _verify_owner_key(owner_key: str | None) -> None:
+    supplied_hash = hash_owner_key(owner_key or "")
+    expected_hash = (settings.OWNER_ACCESS_KEY_HASH or "").lower()
+    if not expected_hash or not hmac.compare_digest(supplied_hash, expected_hash):
+        raise HTTPException(status_code=401, detail="Owner key required.")
 
 @router.get("/manifest")
 async def get_version_manifest(response: Response):
@@ -24,7 +32,7 @@ async def get_version_manifest(response: Response):
         "release_date": RELEASE_DATE,
         "auto_update_supported": True,
         "force_update": False,
-        "release_notes": "Next-Gen iOS Liquid Glass UI, Cyber-Shield Brand Icon & Seamless Auto-Updater.",
+        "release_notes": "Authenticated realtime control, hardened owner PIN verification, native Windows service installer, and refreshed Android client.",
         "download_urls": {
             "windows_setup": "/downloads/windows-setup",
             "windows_exe": "/downloads/windows-exe",
@@ -119,14 +127,16 @@ async def download_windows_exe():
     return RedirectResponse(url=release_url, status_code=302)
 
 @router.get("/android-apk")
-async def download_android_apk():
+async def download_android_apk(x_owner_key: str | None = Header(default=None)):
     """
     Delivers the compiled Android Mobile App installer package (APK).
     If available locally on disk, serves it directly.
     Otherwise, redirects to the high-speed GitHub Release CDN.
     """
+    _verify_owner_key(x_owner_key)
     root = Path(__file__).resolve().parents[3]
     candidate_paths = [
+        root / "artifacts" / "final" / "LaptopGuard-AI-Android-sideload.apk",
         Path(__file__).resolve().parents[1] / "static" / "LaptopGuard-AI.apk",
         root / "services" / "backend" / "static" / "LaptopGuard-AI.apk",
         root / "apps" / "web" / "public" / "LaptopGuard-AI.apk",
@@ -144,13 +154,15 @@ async def download_android_apk():
     return RedirectResponse(url="https://github.com/cit-24-01-0476-maker/laptop.guard.ai/releases/download/v1.4.2/LaptopGuard-AI.apk", status_code=302)
 
 @router.get("/windows-setup")
-async def download_windows_setup():
+async def download_windows_setup(x_owner_key: str | None = Header(default=None)):
     """
     Delivers the LaptopGuard-Setup.exe installer.
     Installs LaptopGuard AI onto PC and creates Desktop shortcut with official shield icon.
     """
+    _verify_owner_key(x_owner_key)
     root = Path(__file__).resolve().parents[3]
     candidate_paths = [
+        root / "artifacts" / "final" / "LaptopGuard-AI-Windows-v2.0.0-Setup.exe",
         root / "apps" / "web" / "public" / "LaptopGuard-Setup.exe",
         root / "services" / "backend" / "static" / "web" / "LaptopGuard-Setup.exe",
         root / "services" / "backend" / "static" / "LaptopGuard-Setup.exe",

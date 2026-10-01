@@ -1,12 +1,14 @@
 import uuid
+import hmac
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from services.backend.config import hash_owner_key, settings
 from services.backend.database import get_db
 from services.backend import models, schemas
-from services.backend.auth import verify_password, get_password_hash, create_access_token, get_current_user
+from services.backend.auth import verify_password, get_password_hash, get_pin_hash, create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -22,7 +24,9 @@ def register(user_in: schemas.UserCreate, request: Request, db: Session = Depend
     if len(clean_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
 
-    clean_secret_pin = (getattr(user_in, 'secret_pin', None) or "6728").strip()
+    clean_secret_pin = user_in.secret_pin.strip()
+    if not clean_secret_pin.isdigit() or not 4 <= len(clean_secret_pin) <= 6:
+        raise HTTPException(status_code=400, detail="Security PIN must contain 4 to 6 digits.")
 
     existing = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if existing:
@@ -39,7 +43,7 @@ def register(user_in: schemas.UserCreate, request: Request, db: Session = Depend
         full_name=full_name,
         role="owner",
         two_factor_enabled=True,
-        two_factor_secret=clean_secret_pin
+        two_factor_secret=get_pin_hash(clean_secret_pin)
     )
     db.add(user)
     
@@ -144,3 +148,11 @@ def login(login_data: schemas.UserLogin, request: Request, db: Session = Depends
 @router.get("/me", response_model=schemas.UserResponse)
 def get_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+@router.post("/owner-access/verify")
+def verify_owner_access(payload: schemas.OwnerAccessVerifyRequest):
+    supplied_hash = hash_owner_key(payload.owner_key)
+    expected_hash = (settings.OWNER_ACCESS_KEY_HASH or "").lower()
+    if not expected_hash or not hmac.compare_digest(supplied_hash, expected_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid owner key.")
+    return {"status": "ok"}

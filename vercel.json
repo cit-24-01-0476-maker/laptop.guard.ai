@@ -3,45 +3,6 @@
   "outputDirectory": "apps/web/dist",
   "headers": [
     {
-      "source": "/(.*\\.exe)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/octet-stream"
-        },
-        {
-          "key": "Content-Disposition",
-          "value": "attachment; filename=\"LaptopGuard-Setup.exe\""
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.apk)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/vnd.android.package-archive"
-        },
-        {
-          "key": "Content-Disposition",
-          "value": "attachment; filename=\"LaptopGuard-AI.apk\""
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.zip)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/zip"
-        },
-        {
-          "key": "Content-Disposition",
-          "value": "attachment; filename=\"LaptopGuard-Windows-Agent-v1.5.2.zip\""
-        }
-      ]
-    },
-    {
       "source": "/(index.html|version.json|manifest.json|favicon.svg|$)",
       "headers": [
         {
@@ -61,24 +22,32 @@
   ],
   "rewrites": [
     {
+      "source": "/LaptopGuard-Setup.exe",
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+    },
+    {
+      "source": "/LaptopGuard-AI.apk",
+      "destination": "https://laptopguard-api.onrender.com/downloads/android-apk"
+    },
+    {
       "source": "/downloads/windows-setup",
-      "destination": "/LaptopGuard-Setup.exe"
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
     },
     {
       "source": "/downloads/windows-exe",
-      "destination": "/LaptopGuard-Setup.exe"
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
     },
     {
       "source": "/downloads/android-apk",
-      "destination": "/LaptopGuard-AI.apk"
+      "destination": "https://laptopguard-api.onrender.com/downloads/android-apk"
     },
     {
       "source": "/downloads/windows-agent",
-      "destination": "/LaptopGuard-Windows-Agent-v1.5.2.zip"
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
     },
     {
       "source": "/downloads/windows-zip",
-      "destination": "/LaptopGuard-Windows-Agent-v1.5.2.zip"
+      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
     },
     {
       "source": "/api/v1/downloads/:match*",

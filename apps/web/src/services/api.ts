@@ -1,4 +1,3 @@
-import { Capacitor } from '@capacitor/core';
 import {
   Device,
   SecurityEvent,
@@ -7,6 +6,7 @@ import {
   EvidenceFile,
   AuditLogItem
 } from '../types';
+import { Capacitor } from '@capacitor/core';
 
 export const getApiBaseUrl = (): string => {
   if (import.meta.env.VITE_API_URL) {
@@ -23,21 +23,12 @@ export const getApiBaseUrl = (): string => {
 export const getDownloadUrl = (endpoint: string): string => {
   const clean = endpoint.replace(/^\//, '');
   if (clean === 'windows-agent' || clean === 'windows-zip') {
-    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
-      return '/LaptopGuard-Windows-Agent-v1.5.2.zip';
-    }
     return 'https://laptopguard-api.onrender.com/downloads/windows-agent';
   }
   if (clean === 'windows-setup' || clean === 'windows-exe') {
-    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
-      return '/LaptopGuard-Setup.exe';
-    }
     return 'https://laptopguard-api.onrender.com/downloads/windows-setup';
   }
   if (clean === 'android-apk') {
-    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
-      return '/LaptopGuard-AI.apk';
-    }
     return 'https://laptopguard-api.onrender.com/downloads/android-apk';
   }
   if (clean === 'manifest') {
@@ -103,8 +94,39 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
   }
 }
 
+const resolveDownloadEndpoint = (artifact: 'windows-setup' | 'android-apk'): string =>
+  artifact === 'windows-setup' ? '/downloads/windows-setup' : '/downloads/android-apk';
+
+export async function downloadOwnerRelease(artifact: 'windows-setup' | 'android-apk', ownerKey: string): Promise<void> {
+  const response = await fetch(`${getApiBaseUrl()}${resolveDownloadEndpoint(artifact)}`, {
+    method: 'GET',
+    headers: {
+      'X-Owner-Key': ownerKey
+    }
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'Download failed' }));
+    throw new Error(err.detail || `Download failed (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = artifact === 'windows-setup' ? 'LaptopGuard-Setup.exe' : 'LaptopGuard-AI.apk';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   // Auth
+  verifyOwnerAccess: (ownerKey: string) =>
+    fetchJson<{ status: string }>('/auth/owner-access/verify', {
+      method: 'POST',
+      body: JSON.stringify({ owner_key: ownerKey })
+    }),
   login: (email: string, password: string) =>
     fetchJson<{ access_token: string; token_type: string; controller_id: string; is_controller_trusted: boolean; user: any }>('/auth/login', {
       method: 'POST',
@@ -113,7 +135,7 @@ export const api = {
   register: (email: string, password: string, full_name: string, secret_pin?: string) =>
     fetchJson<{ access_token: string; token_type: string; controller_id: string; is_controller_trusted: boolean; user: any }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, full_name, secret_pin: secret_pin || '6728' })
+      body: JSON.stringify({ email, password, full_name, secret_pin })
     }),
   getMe: () => fetchJson<any>('/auth/me'),
 

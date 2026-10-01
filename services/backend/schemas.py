@@ -9,13 +9,16 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    secret_pin: Optional[str] = "6728"
+    secret_pin: str = Field(min_length=4, max_length=6, pattern=r"^\d{4,6}$")
 
 class UserLogin(BaseModel):
     email: str
     password: str
     controller_name: Optional[str] = None
     controller_type: Optional[str] = "WEB_BROWSER"
+
+class OwnerAccessVerifyRequest(BaseModel):
+    owner_key: str
 
 class UserResponse(UserBase):
     id: str

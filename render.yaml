@@ -11,3 +11,7 @@ services:
         value: 3.11.0
       - key: JWT_SECRET
         generateValue: true
+      - key: LAPTOPGUARD_SECRET_KEY
+        generateValue: true
+      - key: LAPTOPGUARD_OWNER_ACCESS_KEY_HASH
+        sync: false

@@ -16,7 +16,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('laptopguard_last_email') || '');
   const [password, setPassword] = useState('');
-  const [secretPin, setSecretPin] = useState('6728');
+  const [secretPin, setSecretPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -32,6 +32,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       setErrorMsg('Please enter both email and password.');
       return;
     }
+    if (isRegister && !/^\d{4,6}$/.test(secretPin)) {
+      setErrorMsg('Choose a security PIN containing 4 to 6 digits.');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -44,10 +48,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       }
 
       if (res && res.access_token) {
-        const pinToSave = res.user?.secret_pin || secretPin || '6728';
         localStorage.setItem('laptopguard_last_email', cleanEmail);
-        localStorage.setItem('laptopguard_secret_pin', pinToSave);
-        sessionStorage.setItem('laptopguard_master_unlocked', 'true');
+        localStorage.removeItem('laptopguard_secret_pin');
+        sessionStorage.removeItem('laptopguard_master_unlocked');
         loginUser(res.user, res.access_token, res.controller_id, res.is_controller_trusted);
         onSuccess(res.user);
         onClose();
@@ -180,13 +183,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   maxLength={6}
                   value={secretPin}
                   onChange={(e) => setSecretPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="6728"
+                  placeholder="4-6 digit PIN"
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 text-xs font-mono font-bold tracking-widest text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-inner"
                   required
                 />
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                Your private security PIN to access the Sentinel Dashboard and Mobile Remote (Default: 6728).
+                Choose a private PIN. It is verified securely by your account and is never stored in this browser.
               </p>
             </div>
           )}

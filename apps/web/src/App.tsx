@@ -28,6 +28,81 @@ import { AuthModal } from './components/Modals/AuthModal';
 import { AutoUpdateBanner } from './components/AutoUpdateBanner';
 import { IntroVideoModal } from './components/IntroVideoModal';
 import { MasterAccessLock } from './components/MasterAccessLock';
+import { OWNER_ACCESS_STORAGE_KEY } from './config/ownerAccess';
+import { api } from './services/api';
+
+const OwnerPortalGate: React.FC<{ onUnlock: () => void; onBack: () => void }> = ({ onUnlock, onBack }) => {
+  const [keyValue, setKeyValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const unlock = async () => {
+    setIsVerifying(true);
+    setError(null);
+    try {
+      await api.verifyOwnerAccess(keyValue);
+    } catch (_) {
+      setError('Invalid owner key');
+      setIsVerifying(false);
+      return;
+    }
+    sessionStorage.setItem(OWNER_ACCESS_STORAGE_KEY, 'true');
+    setIsVerifying(false);
+    onUnlock();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950 p-4 text-white">
+      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400 text-slate-950">
+          <LockConfirmModalIcon />
+        </div>
+        <h1 className="mt-5 text-2xl font-black">Private Owner Area</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          This dashboard is locked for the owner only. Enter the special key to continue.
+        </p>
+        <input
+          value={keyValue}
+          onChange={(event) => {
+            setKeyValue(event.target.value);
+            setError(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') void unlock();
+          }}
+          type="password"
+          disabled={isVerifying}
+          autoFocus
+          placeholder="Owner key"
+          className="mt-6 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white outline-none ring-cyan-400/20 placeholder:text-slate-500 focus:border-cyan-300 focus:ring-4"
+        />
+        {error && <p className="mt-3 text-xs font-black text-rose-300">{error}</p>}
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onBack}
+            className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-slate-300 hover:bg-white/10"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => void unlock()}
+            disabled={isVerifying}
+            className="flex-1 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+          >
+            {isVerifying ? 'Verifying...' : 'Unlock'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LockConfirmModalIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="11" width="16" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </svg>
+);
 
 const checkIsAppMode = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -123,15 +198,21 @@ export const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, isAppMode, currentView]);
 
-  // Master Access Lock (Owner PIN: 6728)
+  // Master Access Lock (server-verified owner PIN)
   const [isMasterUnlocked, setIsMasterUnlocked] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('laptopguard_master_unlocked') === 'true';
   });
+  const [isOwnerPortalUnlocked, setIsOwnerPortalUnlocked] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem(OWNER_ACCESS_STORAGE_KEY) === 'true';
+  });
 
   const handleMasterRelock = () => {
     sessionStorage.removeItem('laptopguard_master_unlocked');
+    sessionStorage.removeItem(OWNER_ACCESS_STORAGE_KEY);
     setIsMasterUnlocked(false);
+    setIsOwnerPortalUnlocked(false);
   };
 
   // ==========================================
@@ -228,6 +309,16 @@ export const AppContent: React.FC = () => {
           onLockMasterAccess={handleMasterRelock}
         />
       </>
+    );
+  }
+
+  // Desktop Dashboard Views (Protected by Passcode)
+  if (!isOwnerPortalUnlocked) {
+    return (
+      <OwnerPortalGate
+        onUnlock={() => setIsOwnerPortalUnlocked(true)}
+        onBack={() => setCurrentView('landing')}
+      />
     );
   }
 
