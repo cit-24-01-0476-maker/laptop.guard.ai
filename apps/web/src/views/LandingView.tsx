@@ -146,9 +146,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
       <main>
         <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(14,165,233,0.08),transparent_35%,rgba(168,85,247,0.08)_70%,transparent)]" />
-          <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-            <div className="flex flex-col justify-center">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_24%,rgba(255,122,26,0.14),transparent_28%),radial-gradient(circle_at_88%_58%,rgba(139,44,255,0.13),transparent_32%),linear-gradient(120deg,rgba(14,165,233,0.07),transparent_38%,rgba(255,255,255,0.92))]" />
+          <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-4 pb-12 pt-8 sm:px-6 sm:pb-14 sm:pt-10 lg:grid-cols-[0.96fr_1.04fr] lg:gap-8 lg:px-8 lg:pb-12 lg:pt-8">
+            <div className="flex flex-col justify-start pt-2 lg:pt-8">
               <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-cyan-800">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 LaptopGuard AI {releaseLabel}
@@ -156,10 +156,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <h1 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
                 Personal laptop security with an owner-only control room.
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
                 A private anti-theft system for Windows laptops: charger watchdog, remote lock, live verification, event history, and mobile control. Public visitors can understand the product, but the actual console and installers stay behind an owner key.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-wrap gap-3">
                 <button
                   onClick={() => runProtectedAction('dashboard')}
                   className="inline-flex items-center gap-2 rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-xl shadow-cyan-600/20 hover:bg-cyan-500"
