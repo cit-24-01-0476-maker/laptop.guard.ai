@@ -67,6 +67,24 @@ class ConnectionHub:
                 return False
         return False
 
+    async def relay_webrtc_signaling(self, target_type: str, target_id: str, payload: dict) -> bool:
+        """Relay signaling only to an already authenticated user or registered device."""
+        message = json.dumps({"type": "WEBRTC_SIGNAL", **payload})
+        if target_type == "device":
+            ws = self.active_devices.get(target_id)
+            if not ws:
+                return False
+            try:
+                await ws.send_text(message)
+                return True
+            except Exception as exc:
+                logger.warning("Failed to relay WebRTC signal to device %s: %s", target_id, exc)
+                return False
+        if target_type == "user":
+            await self.broadcast_to_user(target_id, {"type": "WEBRTC_SIGNAL", **payload})
+            return target_id in self.active_clients
+        return False
+
     async def broadcast_to_user(self, user_id: str, message: dict):
         """
         Specification Section 40, TEST 15: Cross-Account WebSocket Isolation.

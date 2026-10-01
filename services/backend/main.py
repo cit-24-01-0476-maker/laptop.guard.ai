@@ -1,6 +1,7 @@
 import json
 import uuid
 import logging
+import jwt
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -25,6 +26,7 @@ from services.backend.routers import (
     controllers_router,
 )
 from services.backend import models
+from services.backend.location import record_device_location
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -76,30 +78,6 @@ def health_check():
         "online_devices_count": len(hub.active_devices),
         "connected_clients_count": sum(len(c) for c in hub.active_clients.values())
     }
-
-@app.on_event("startup")
-def on_startup():
-    """Ensure database has default demo owner on fresh deployments."""
-    try:
-        from services.backend.auth import get_password_hash
-        db: Session = next(get_db())
-        user = db.query(models.User).filter(models.User.email == "oska@laptopguard.ai").first()
-        if not user:
-            user = models.User(
-                id="usr_owner_demo",
-                email="oska@laptopguard.ai",
-                password_hash=get_password_hash("SecurityPass2026!"),
-                full_name="Oska Perera",
-                role="owner",
-                two_factor_enabled=True,
-                two_factor_secret="6728",
-                created_at=models.datetime.datetime.utcnow()
-            )
-            db.add(user)
-            db.commit()
-            logger.info("Initialized default demo owner: oska@laptopguard.ai")
-    except Exception as e:
-        logger.error(f"Startup seed error: {e}")
 
 # =============================================================================
 # WebSockets: Real-Time Communication & WebRTC Signaling
@@ -162,6 +140,7 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                     device.current_ssid = msg.get("current_ssid", device.current_ssid)
                     device.ip_address = msg.get("ip_address", device.ip_address)
                     device.last_seen = models.datetime.datetime.utcnow()
+                    location = record_device_location(db, device_id, msg.get("location"))
                     db.commit()
                     
                     if target_user_id:
@@ -171,7 +150,12 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                             "battery": device.battery,
                             "is_charging": device.is_charging,
                             "current_ssid": device.current_ssid,
-                            "last_seen": device.last_seen.isoformat()
+                            "last_seen": device.last_seen.isoformat(),
+                            "last_location": {"id": location.id, "device_id": device_id,
+                                "latitude": location.latitude, "longitude": location.longitude,
+                                "accuracy_meters": location.accuracy_meters, "source": location.source,
+                                "captured_at": location.captured_at.isoformat() + "Z",
+                                "city": location.city, "country": location.country} if location else None
                         })
 
                 elif msg_type == "COMMAND_RESULT":
@@ -180,7 +164,7 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
                     cmd = db.query(models.DeviceCommand).filter(models.DeviceCommand.command_id == cmd_id).first()
                     if cmd:
                         cmd.status = status_str
-                        cmd.executed_at = models.datetime.datetime.utcnow()
+                        cmd.completed_at = models.datetime.datetime.utcnow()
                         db.commit()
                         
                     if target_user_id:
@@ -296,6 +280,22 @@ async def device_websocket_endpoint(websocket: WebSocket, device_id: str):
 @app.websocket("/api/v1/ws/client/{user_id}")
 async def client_websocket_endpoint(websocket: WebSocket, user_id: str):
     """Real-time channel for Web Dashboards and Mobile Applications."""
+    token = websocket.query_params.get("token")
+    try:
+        payload = jwt.decode(token or "", settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        authenticated_user_id = payload.get("sub")
+        if authenticated_user_id != user_id:
+            await websocket.close(code=1008, reason="Authentication failed")
+            return
+        db: Session = next(get_db())
+        user_exists = db.query(models.User).filter(models.User.id == authenticated_user_id).first()
+        db.close()
+        if not user_exists:
+            await websocket.close(code=1008, reason="Authentication failed")
+            return
+    except jwt.PyJWTError:
+        await websocket.close(code=1008, reason="Authentication failed")
+        return
     await hub.register_client(user_id, websocket)
     try:
         while True:

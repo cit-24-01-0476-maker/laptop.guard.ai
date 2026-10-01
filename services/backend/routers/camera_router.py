@@ -161,12 +161,7 @@ def get_camera_snapshot(device_id: str, request: Request, db: Session = Depends(
             "Pragma": "no-cache",
             "Expires": "0"
         })
-    hud = generate_sentinel_hud_frame(device_id)
-    return Response(content=hud, media_type="image/jpeg", headers={
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
-    })
+    raise HTTPException(status_code=503, detail="No live webcam frame. Start sharing on the updated Windows agent.")
 
 @router.post("/start", response_model=schemas.CameraSessionResponse)
 async def start_camera_session(
@@ -204,3 +199,13 @@ async def start_camera_session(
         "expires_at": expires_at,
         "ice_servers": settings.ICE_SERVERS
     }
+
+@router.post("/stop/{session_id}")
+def stop_camera_session(session_id: str, request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    session = db.query(models.CameraSession).filter(models.CameraSession.session_id == session_id, models.CameraSession.user_id == current_user.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Camera session not found.")
+    authorize_device_action(db, current_user, session.device_id, action="STOP_CAMERA_SESSION", controller=get_controller_from_request(request, current_user, db))
+    session.status = "STOPPED"
+    db.commit()
+    return {"status": "STOPPED", "duration": max(0, int((datetime.utcnow() - session.started_at).total_seconds()))}

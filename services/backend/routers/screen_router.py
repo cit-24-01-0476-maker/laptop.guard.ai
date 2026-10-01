@@ -113,12 +113,7 @@ def get_screen_snapshot(device_id: str, request: Request, db: Session = Depends(
             "Pragma": "no-cache",
             "Expires": "0"
         })
-    hud = generate_screen_hud_frame(device_id)
-    return Response(content=hud, media_type="image/jpeg", headers={
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
-    })
+    raise HTTPException(status_code=503, detail="No live screen frame. Start sharing on the updated Windows agent.")
 
 @router.get("/stream/{device_id}")
 def stream_screen(device_id: str, request: Request, db: Session = Depends(get_db)):

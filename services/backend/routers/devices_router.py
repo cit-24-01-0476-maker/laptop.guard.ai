@@ -43,7 +43,8 @@ def get_my_devices(
             current_status = "Offline"
         
         last_loc = db.query(models.DeviceLocation).filter(
-            models.DeviceLocation.device_id == d.id
+            models.DeviceLocation.device_id == d.id,
+            models.DeviceLocation.source == "os_location"
         ).order_by(models.DeviceLocation.captured_at.desc()).first()
 
         results.append({
@@ -86,7 +87,8 @@ def get_device(
         current_status = "Offline"
 
     last_loc = db.query(models.DeviceLocation).filter(
-        models.DeviceLocation.device_id == device.id
+        models.DeviceLocation.device_id == device.id,
+        models.DeviceLocation.source == "os_location"
     ).order_by(models.DeviceLocation.captured_at.desc()).first()
 
     return {
@@ -150,39 +152,13 @@ def refresh_device_location(
         db, current_user, device_id, action="VIEW_PRECISE_LOCATION", controller=controller
     )
 
-    lat = 6.9271
-    lon = 79.8612
-    city = "Colombo"
-    country = "Sri Lanka"
-    method = "wifi_triangulation"
-
-    if payload and "latitude" in payload and "longitude" in payload:
-        lat = float(payload["latitude"])
-        lon = float(payload["longitude"])
-        city = payload.get("city", city)
-        country = payload.get("country", country)
-        method = payload.get("method", "browser_gps")
-
-    now = datetime.utcnow()
-    loc_id = f"loc_{uuid.uuid4().hex[:10]}"
-    new_loc = models.DeviceLocation(
-        id=loc_id,
-        device_id=device.id,
-        latitude=lat,
-        longitude=lon,
-        accuracy_meters=50.0 if method == "browser_gps" else 150.0,
-        source=method,
-        city=city,
-        country=country,
-        captured_at=now,
-        recorded_at=now
-    )
-    db.add(new_loc)
-    device.last_seen = now
-    db.commit()
-    db.refresh(new_loc)
-
-    return new_loc
+    latest = db.query(models.DeviceLocation).filter(
+        models.DeviceLocation.device_id == device_id,
+        models.DeviceLocation.source == "os_location"
+    ).order_by(models.DeviceLocation.captured_at.desc()).first()
+    if not latest:
+        raise HTTPException(status_code=404, detail="Laptop location unavailable. Enable Windows Location services and keep the session agent running.")
+    return latest
 
 @router.post("/{device_id}/remove")
 def remove_device(
