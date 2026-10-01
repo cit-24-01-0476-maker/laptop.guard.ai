@@ -23,31 +23,31 @@
   "rewrites": [
     {
       "source": "/LaptopGuard-Setup.exe",
-      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+      "destination": "/404"
     },
     {
       "source": "/LaptopGuard-AI.apk",
-      "destination": "https://laptopguard-api.onrender.com/downloads/android-apk"
+      "destination": "/404"
     },
     {
       "source": "/downloads/windows-setup",
-      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+      "destination": "/404"
     },
     {
       "source": "/downloads/windows-exe",
-      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+      "destination": "/404"
     },
     {
       "source": "/downloads/android-apk",
-      "destination": "https://laptopguard-api.onrender.com/downloads/android-apk"
+      "destination": "/404"
     },
     {
       "source": "/downloads/windows-agent",
-      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+      "destination": "/404"
     },
     {
       "source": "/downloads/windows-zip",
-      "destination": "https://laptopguard-api.onrender.com/downloads/windows-setup"
+      "destination": "/404"
     },
     {
       "source": "/api/v1/downloads/:match*",
