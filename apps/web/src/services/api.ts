@@ -90,6 +90,9 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
     return await res.json();
   } catch (error: any) {
     console.warn(`API call ${endpoint} failed:`, error.message);
+    if (error instanceof TypeError && /fetch/i.test(error.message || '')) {
+      throw new Error('LaptopGuard cloud connect වෙන්න බැහැ. Internet connection එක check කරලා තව තත්පර කිහිපයකින් ආයෙ try කරන්න.');
+    }
     throw error;
   }
 }

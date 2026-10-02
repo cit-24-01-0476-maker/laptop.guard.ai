@@ -27,10 +27,14 @@ class Settings:
         origin.strip()
         for origin in os.getenv(
             "LAPTOPGUARD_ALLOWED_ORIGINS",
-            "https://laptopguardai.vercel.app,https://laptop.guard.ai,http://127.0.0.1:5173,http://127.0.0.1:5177,http://localhost:5173,http://localhost:5177",
+            "https://laptopguardai.vercel.app,https://laptop.guard.ai,capacitor://localhost,ionic://localhost,http://localhost,http://127.0.0.1,http://127.0.0.1:5173,http://127.0.0.1:5177,http://localhost:5173,http://localhost:5177",
         ).split(",")
         if origin.strip()
     ]
+    ALLOWED_ORIGIN_REGEX: str | None = os.getenv(
+        "LAPTOPGUARD_ALLOWED_ORIGIN_REGEX",
+        r"^https://([a-z0-9-]+\.)*vercel\.app$|^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^(capacitor|ionic)://localhost$",
+    )
     
     # SQLite default, or PostgreSQL if DATABASE_URL is set
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
