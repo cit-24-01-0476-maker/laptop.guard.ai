@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from services.backend.database import get_db
 from services.backend import models, schemas
 from services.backend.auth import get_current_user
+from services.backend.auth import verify_pin
 
 router = APIRouter(prefix="/controllers", tags=["Trusted Controllers"])
 
@@ -47,9 +48,7 @@ def authorize_controller(
     Requires account MFA PIN or strong confirmation (Specification Section 11).
     """
     entered_pin = req_in.verification_code_or_pin.strip()
-    user_pin = (current_user.two_factor_secret or "6728").strip()
-
-    if entered_pin != user_pin and entered_pin != "6728":
+    if not verify_pin(entered_pin, current_user.two_factor_secret):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="INVALID_PIN: Verification code or security PIN is incorrect."
