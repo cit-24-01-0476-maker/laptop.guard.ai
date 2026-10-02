@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   Shield,
   ShieldAlert,
@@ -56,6 +56,16 @@ interface MobileViewProps {
   onLockMasterAccess?: () => void;
 }
 
+interface LaptopGuardUpdaterPlugin {
+  installApk(options: { url: string; token?: string }): Promise<{ status: string; message?: string }>;
+  addListener(
+    eventName: 'downloadProgress',
+    listenerFunc: (event: { progress: number; bytesRead?: number; totalBytes?: number }) => void
+  ): Promise<{ remove: () => Promise<void> }>;
+}
+
+const LaptopGuardUpdater = registerPlugin<LaptopGuardUpdaterPlugin>('LaptopGuardUpdater');
+
 export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenDashboard, onOpenIntro, onLockMasterAccess }) => {
   const {
     devices,
@@ -74,13 +84,17 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
     user,
     logoutUser,
     refreshAll,
-    takeSnapshot
+    takeSnapshot,
+    isControllerTrusted,
+    authorizeThisBrowser
   } = useSecurity();
 
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'map' | 'alerts' | 'profile'>('home');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [currentVersion, setCurrentVersion] = useState(() => localStorage.getItem('laptopguard_client_version') || '1.6.1');
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [updatePhase, setUpdatePhase] = useState<string | null>(null);
+  const [currentVersion, setCurrentVersion] = useState(() => localStorage.getItem('laptopguard_client_version') || '2.0.4');
   const [sirenCountdown, setSirenCountdown] = useState<number | null>(null);
   const [pwaPrompt, setPwaPrompt] = useState<any>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
@@ -90,7 +104,10 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   // Camera Live states (Automatic hardware access, no permission roadblock)
   const [cameraPermitted, setCameraPermitted] = useState<boolean>(true);
   const [cameraKey, setCameraKey] = useState<number>(Date.now());
-  const [cameraMode, setCameraMode] = useState<'stream' | 'poll'>('stream');
+  const [cameraMode, setCameraMode] = useState<'stream' | 'poll'>('poll');
+  const [mediaActive, setMediaActive] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const [mediaPin, setMediaPin] = useState('');
   const [pollUrl, setPollUrl] = useState<string>('');
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState<boolean>(false);
   const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
@@ -115,28 +132,21 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
   // Active Device (only real paired devices belonging to this user)
   const currentDev = selectedDevice || (devices.length > 0 ? devices[0] : null);
+  const laptopLocation = currentDev?.last_location && (currentDev.last_location.source === 'os_location' || currentDev.last_location.method === 'os_location') ? currentDev.last_location : null;
   const isArmed = currentDev ? (currentDev.status === 'Protected' || currentDev.status === 'Lost') : false;
 
   // Sync real phone GPS coordinates to laptop cloud record
-  const syncPhoneGpsToLaptop = async (lat: number, lng: number, manual = false) => {
+  const syncPhoneGpsToLaptop = async (_lat: number, _lng: number, manual = false) => {
     if (!currentDev?.id) return;
     try {
       if (manual) setIsSyncingGps(true);
-      await api.refreshLocation(currentDev.id, {
-        latitude: lat,
-        longitude: lng,
-        accuracy_meters: 15,
-        city: 'Colombo',
-        region: 'Western Province',
-        country: 'Sri Lanka',
-        method: 'phone_gps_sync'
-      });
+      await api.refreshLocation(currentDev.id);
       if (manual) {
-        alert(`Real GPS location synced: ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E!`);
+        alert('Latest laptop sensor location loaded.');
         refreshAll();
       }
-    } catch (e) {
-      console.warn('GPS sync error:', e);
+    } catch (e: any) {
+      if (manual) alert(e.message || 'Laptop location unavailable.');
     } finally {
       if (manual) setIsSyncingGps(false);
     }
@@ -150,8 +160,9 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         const uLng = pos.coords.longitude;
         setPhoneCoords({ lat: uLat, lng: uLng });
 
-        const lLat = currentDev?.last_location?.latitude || uLat;
-        const lLng = currentDev?.last_location?.longitude || uLng;
+        if (!laptopLocation) { setDistanceInfo('Laptop location unavailable'); return; }
+        const lLat = laptopLocation.latitude;
+        const lLng = laptopLocation.longitude;
 
         const R = 6371e3; // Earth radius in meters
         const phi1 = (uLat * Math.PI) / 180;
@@ -178,18 +189,15 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         pos => {
           calcProximity(pos);
           // If laptop location is not yet set or default, auto-sync phone GPS
-          if (currentDev?.id && (!currentDev.last_location || (currentDev.last_location as any).method === 'default')) {
-            syncPhoneGpsToLaptop(pos.coords.latitude, pos.coords.longitude, false);
-          }
         },
-        () => setDistanceInfo('Near Colombo, Sri Lanka (~50m)'),
+        () => setDistanceInfo('Phone location permission unavailable'),
         { enableHighAccuracy: true, timeout: 8000 }
       );
 
       const watchId = navigator.geolocation.watchPosition(calcProximity, () => {}, { enableHighAccuracy: true });
       return () => navigator.geolocation.clearWatch(watchId);
     } else {
-      setDistanceInfo('Near Colombo, Sri Lanka');
+      setDistanceInfo('Location unavailable');
     }
   }, [currentDev?.id, currentDev?.last_location?.latitude, currentDev?.last_location?.longitude]);
 
@@ -222,7 +230,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
   // Live Media Feed Auto-Polling (Only runs if cameraMode is 'poll')
   useEffect(() => {
     let pollTimer: any = null;
-    if (activeTab === 'camera' && currentDev?.id && cameraMode === 'poll') {
+    if (mediaActive && activeTab === 'camera' && currentDev?.id && cameraMode === 'poll') {
       if (mediaFeedMode === 'webcam') {
         setPollUrl(getCameraSnapshotUrl(currentDev.id));
         pollTimer = setInterval(() => {
@@ -236,33 +244,97 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
       }
     }
     return () => clearInterval(pollTimer);
-  }, [activeTab, mediaFeedMode, cameraMode, currentDev?.id]);
+  }, [activeTab, mediaFeedMode, cameraMode, currentDev?.id, mediaActive]);
+
+  useEffect(() => {
+    if (!mediaActive) return;
+    const timer = setTimeout(() => setMediaActive(false), 300000);
+    return () => clearTimeout(timer);
+  }, [mediaActive]);
+
+  useEffect(() => {
+    setMediaActive(false);
+    return () => { if (currentDev?.id) void api.dispatchCommand(currentDev.id, 'STOP_MEDIA').catch(() => {}); };
+  }, [activeTab, mediaFeedMode, currentDev?.id]);
 
   // Manual Check for App Updates (triggered when user clicks button in Profile tab)
   const checkAutoUpdate = async (manual = true) => {
     if (!manual) return;
     setIsCheckingUpdate(true);
     setUpdateMessage(null);
+    setUpdateProgress(4);
+    setUpdatePhase('Checking latest secure build...');
     try {
       const res = await fetch(getDownloadUrl('manifest'));
       const data = await res.json();
-      const currentVer = localStorage.getItem('laptopguard_client_version') || '1.6.1';
-      if (data.latest_version && data.latest_version !== currentVer) {
-        setUpdateMessage(`⬆️ Updating to v${data.latest_version}...`);
-        localStorage.setItem('laptopguard_client_version', data.latest_version);
-        setCurrentVersion(data.latest_version);
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+      const latestVersion = data.latest_version || data.version;
+      const currentVer = localStorage.getItem('laptopguard_client_version') || '2.0.4';
+      if (latestVersion && latestVersion !== currentVer) {
+        setUpdateMessage(`⬆️ Updating to v${latestVersion}...`);
+        setUpdatePhase(`Preparing v${latestVersion} update...`);
+
+        if (Capacitor.isNativePlatform()) {
+          const listener = await LaptopGuardUpdater.addListener('downloadProgress', (event) => {
+            if (event.progress > 0) {
+              setUpdateProgress(Math.max(8, Math.min(96, event.progress)));
+              setUpdatePhase(`Downloading secure APK... ${event.progress}%`);
+            }
+          });
+          try {
+            const result = await LaptopGuardUpdater.installApk({
+              url: getDownloadUrl('android-apk'),
+              token: localStorage.getItem('laptopguard_token') || undefined
+            });
+            await listener.remove();
+            if (result.status === 'permission_required') {
+              setUpdateProgress(null);
+              setUpdatePhase(null);
+              setUpdateMessage('Allow "Install unknown apps" for LaptopGuard, then tap update again.');
+              setTimeout(() => setUpdateMessage(null), 7000);
+              return;
+            }
+            setUpdateProgress(100);
+            setUpdatePhase('Installer opened. Tap Update, then reopen LaptopGuard.');
+            localStorage.setItem('laptopguard_client_version', latestVersion);
+            setCurrentVersion(latestVersion);
+            setTimeout(() => {
+              setUpdateProgress(null);
+              setUpdatePhase(null);
+            }, 8000);
+          } catch (nativeErr: any) {
+            await listener.remove();
+            throw nativeErr;
+          }
+        } else {
+          setUpdateProgress(35);
+          setUpdatePhase('Refreshing web app cache...');
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map(reg => reg.unregister()));
+          }
+          setUpdateProgress(82);
+          setUpdatePhase('Applying update and restarting app...');
+          localStorage.setItem('laptopguard_client_version', latestVersion);
+          setCurrentVersion(latestVersion);
+          setTimeout(() => {
+            window.location.reload();
+          }, 900);
+        }
       } else {
         setUpdateMessage(`✅ App is running the latest version (v${currentVer})`);
         setTimeout(() => setUpdateMessage(null), 3000);
       }
-    } catch (e) {
-      setUpdateMessage('✅ App is up to date.');
-      setTimeout(() => setUpdateMessage(null), 3000);
+    } catch (e: any) {
+      setUpdateMessage(e?.message || 'Update check failed. Please try again.');
+      setTimeout(() => setUpdateMessage(null), 5000);
     } finally {
       setIsCheckingUpdate(false);
+      if (!Capacitor.isNativePlatform()) {
+        setTimeout(() => {
+          setUpdateProgress(null);
+          setUpdatePhase(null);
+        }, 1200);
+      }
     }
   };
 
@@ -969,6 +1041,30 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </div>
               </div>
 
+              {!isControllerTrusted && <div className="flex gap-2 mb-3">
+                <input type="password" inputMode="numeric" maxLength={6} value={mediaPin} onChange={e => setMediaPin(e.target.value)} placeholder="Account security PIN" className="min-w-0 p-2 border rounded-xl" />
+                <button className="p-2 rounded-xl bg-amber-100" onClick={async () => {
+                  try { if (!await authorizeThisBrowser(mediaPin)) throw new Error('Invalid account PIN'); setMediaPin(''); setMediaError(''); }
+                  catch (e: any) { setMediaError(e.message); }
+                }}>Authorize</button>
+              </div>}
+              <div className="flex gap-2 mb-3">
+                <button className="px-4 py-2 rounded-xl bg-blue-600 text-white" onClick={async () => {
+                  setMediaError('');
+                  try {
+                    const command = await api.dispatchCommand(currentDev.id, mediaFeedMode === 'webcam' ? 'START_LIVE_CAMERA' : 'STREAM_SCREEN');
+                    if (command.status !== 'DISPATCHED' && command.status !== 'EXECUTED') throw new Error('Laptop offline. Run the updated Windows installer and keep LaptopGuard open.');
+                    setMediaActive(true);
+                    setPollUrl(getCameraSnapshotUrl(currentDev.id));
+                    setScreenPollUrl(getScreenSnapshotUrl(currentDev.id));
+                  } catch (e: any) { setMediaError(e.message); }
+                }}>Start {mediaFeedMode === 'webcam' ? 'webcam' : 'screen sharing'}</button>
+                <button className="px-4 py-2 rounded-xl bg-slate-200" onClick={async () => {
+                  try { await api.dispatchCommand(currentDev.id, 'STOP_MEDIA'); setMediaActive(false); }
+                  catch (e: any) { setMediaError(e.message); }
+                }}>Stop</button>
+              </div>
+              {mediaError && <p className="text-sm text-rose-600 mb-3">{mediaError}</p>}
               {/* Stream Protocol Switcher (Real-Time Stream vs Snapshot Poll) */}
               <div className="flex items-center justify-between px-2 py-1.5 rounded-2xl bg-white/70 border border-slate-200/80 mb-2.5 text-[10px]">
                 <span className="text-slate-500 font-medium">Protocol Mode:</span>
@@ -1007,17 +1103,19 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
 
               {/* Video / Screen Stream Container */}
               <div className="rounded-2xl overflow-hidden bg-slate-950 aspect-video relative flex items-center justify-center border border-slate-800 shadow-inner">
-                {mediaFeedMode === 'webcam' ? (
+                {!mediaActive ? <p className="text-slate-300 p-4 text-center">Tap Start to request a 5-minute sharing session. A visible Stop sharing window appears on your laptop.</p> : mediaFeedMode === 'webcam' ? (
                   <img
                     key={`cam-${cameraMode}-${cameraKey}`}
                     src={
                       cameraMode === 'stream'
-                        ? `${getCameraStreamUrl(currentDev.id)}?k=${cameraKey}`
+                        ? `${getCameraStreamUrl(currentDev.id)}&k=${cameraKey}`
                         : pollUrl || getCameraSnapshotUrl(currentDev.id, cameraKey)
                     }
                     alt="Live Laptop Webcam Stream"
                     className="w-full h-full object-cover"
+                    onLoad={() => setMediaError('')}
                     onError={() => {
+                      setMediaError('Waiting for laptop webcam frames. Check Windows camera permission and the sharing window.');
                       setTimeout(() => {
                         setCameraKey(Date.now());
                       }, 2000);
@@ -1028,12 +1126,14 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                     key={`scr-${cameraMode}-${screenKey}`}
                     src={
                       cameraMode === 'stream'
-                        ? `${getScreenStreamUrl(currentDev.id)}?k=${screenKey}`
+                        ? `${getScreenStreamUrl(currentDev.id)}&k=${screenKey}`
                         : screenPollUrl || getScreenSnapshotUrl(currentDev.id, screenKey)
                     }
                     alt="Live Laptop Desktop Mirror"
                     className="w-full h-full object-cover"
+                    onLoad={() => setMediaError('')}
                     onError={() => {
+                      setMediaError('Waiting for laptop screen frames. Keep the Windows session unlocked and check the sharing window.');
                       setTimeout(() => {
                         setScreenKey(Date.now());
                       }, 2000);
@@ -1161,22 +1261,22 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </div>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span>ACTIVE TRACK</span>
+                  <span>{laptopLocation ? 'LAST LAPTOP FIX' : 'LOCATION UNAVAILABLE'}</span>
                 </span>
               </div>
 
               {/* Embedded Google Maps View */}
               <div className="w-full aspect-[4/3] rounded-2xl bg-slate-900 overflow-hidden relative border border-slate-200 shadow-sm">
-                <iframe
+                {laptopLocation ? <iframe
                   title="Laptop Google Maps Location"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
-                  src={`https://maps.google.com/maps?q=${currentDev?.last_location?.latitude || 6.9271},${currentDev?.last_location?.longitude || 79.8612}&z=16&output=embed`}
+                  src={`https://maps.google.com/maps?q=${laptopLocation.latitude},${laptopLocation.longitude}&z=16&output=embed`}
                   allowFullScreen
                   loading="lazy"
                   className="w-full h-full"
-                />
+                /> : <p className="text-slate-300 p-8">No laptop sensor fix yet. Enable Windows Location services and run the updated LaptopGuard agent.</p>}
                 
                 {/* Floating GPS Target Tag */}
                 <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-mono text-emerald-300 flex items-center gap-1.5 border border-white/10 shadow-sm pointer-events-none">
@@ -1188,7 +1288,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               {/* Quick Actions Bar (Google Maps & Directions) */}
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${currentDev?.last_location?.latitude || 6.9271},${currentDev?.last_location?.longitude || 79.8612}`}
+                  href={laptopLocation ? `https://www.google.com/maps/search/?api=1&query=${laptopLocation.latitude},${laptopLocation.longitude}` : undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-2.5 px-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
@@ -1198,7 +1298,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                 </a>
 
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${currentDev?.last_location?.latitude || 6.9271},${currentDev?.last_location?.longitude || 79.8612}`}
+                  href={laptopLocation ? `https://www.google.com/maps/dir/?api=1&destination=${laptopLocation.latitude},${laptopLocation.longitude}` : undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-2.5 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer"
@@ -1248,7 +1348,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                     <span className="font-medium text-[11px]">Coordinates:</span>
                   </div>
                   <span className="font-mono text-[10px] text-slate-700 text-right">
-                    {(currentDev?.last_location?.latitude || 6.9271).toFixed(4)}° N, {(currentDev?.last_location?.longitude || 79.8612).toFixed(4)}° E
+                    {laptopLocation ? `${laptopLocation.latitude.toFixed(6)}, ${laptopLocation.longitude.toFixed(6)} (±${Math.round(laptopLocation.accuracy_meters)}m)` : 'Laptop location unavailable'}
                   </span>
                 </div>
               </div>
@@ -1257,22 +1357,13 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               <div className="space-y-2 mt-2.5">
                 <button
                   onClick={() => {
-                    if (phoneCoords) {
-                      syncPhoneGpsToLaptop(phoneCoords.lat, phoneCoords.lng, true);
-                    } else if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-                      navigator.geolocation.getCurrentPosition(
-                        pos => syncPhoneGpsToLaptop(pos.coords.latitude, pos.coords.longitude, true),
-                        () => alert('Could not access Phone GPS. Please check location permissions on your phone.')
-                      );
-                    } else {
-                      alert('Phone GPS not available in this browser.');
-                    }
+                    void syncPhoneGpsToLaptop(0, 0, true);
                   }}
                   disabled={isSyncingGps}
                   className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-60"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>{isSyncingGps ? 'Syncing Real GPS...' : '📍 Sync Real Phone GPS to Laptop'}</span>
+                  <span>{isSyncingGps ? 'Refreshing...' : '📍 Refresh laptop location'}</span>
                 </button>
 
                 <button
@@ -1385,7 +1476,7 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
                   <Smartphone className="w-4 h-4 text-emerald-600" />
                   <div>
                     <span className="font-bold text-slate-800 block">Android APK Package</span>
-                    <span className="text-[10px] text-slate-500">Version 1.5.0 • 15.8 MB</span>
+                    <span className="text-[10px] text-slate-500">Version 2.0.4 • secure APK</span>
                   </div>
                 </div>
                 <Download className="w-4 h-4 text-slate-500" />
@@ -1408,10 +1499,10 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
               <button
                 onClick={() => checkAutoUpdate(true)}
                 disabled={isCheckingUpdate}
-                className="w-full py-2.5 rounded-2xl border border-slate-200/80 bg-white/70 text-xs font-bold text-slate-700 hover:bg-white flex items-center justify-center gap-1.5 ios-bubble-btn cursor-pointer"
+                className="w-full py-2.5 rounded-2xl border border-blue-200/80 bg-blue-50/80 text-xs font-bold text-blue-800 hover:bg-white flex items-center justify-center gap-1.5 ios-bubble-btn cursor-pointer disabled:opacity-70"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-                <span>{isCheckingUpdate ? 'Checking OTA...' : 'Check for App Updates'}</span>
+                <span>{isCheckingUpdate ? 'Updating inside app...' : 'Auto Update App Now'}</span>
               </button>
             </div>
 
@@ -1431,6 +1522,33 @@ export const MobileView: React.FC<MobileViewProps> = ({ onBackToLanding, onOpenD
         )}
 
       </main>
+
+      {updateProgress !== null && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 backdrop-blur-xl p-4">
+          <div className="w-full max-w-sm rounded-[32px] border border-white/20 bg-white/95 p-5 text-center shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-blue-600 to-cyan-400 text-white shadow-lg shadow-blue-500/30">
+              <RefreshCw className="h-7 w-7 animate-spin" />
+            </div>
+            <h3 className="text-lg font-black text-slate-950">LaptopGuard Auto Update</h3>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              {updatePhase || 'Updating secure mobile controller...'}
+            </p>
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 via-cyan-400 to-emerald-400 transition-all duration-300"
+                style={{ width: `${Math.max(3, Math.min(100, updateProgress))}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] font-black uppercase tracking-wide text-slate-400">
+              <span>Secure package</span>
+              <span>{Math.round(updateProgress)}%</span>
+            </div>
+            <p className="mt-4 text-[11px] leading-5 text-slate-500">
+              Account, paired laptop, and trusted controller data stay saved during update.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 3. Floating Next-Gen iOS Jelly Glass Bottom Navigation Bar */}
       <nav 

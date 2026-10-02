@@ -219,7 +219,7 @@ export const MobileAuthView: React.FC<MobileAuthViewProps> = ({ onSuccess }) => 
           </span>
         </div>
         <p className="text-[10px] text-slate-500 mt-2">
-          LaptopGuard AI Mobile Client • v1.5.0
+          LaptopGuard AI Mobile Client • v2.0.4
         </p>
       </div>
 

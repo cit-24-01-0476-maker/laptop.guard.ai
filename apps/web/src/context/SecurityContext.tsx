@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Device, SecurityEvent, NotificationItem, CameraSession } from '../types';
 import { api } from '../services/api';
 import { realtimeHub } from '../services/websocket';
@@ -59,6 +60,23 @@ interface SecurityContextType {
 }
 
 const SecurityContext = createContext<SecurityContextType | null>(null);
+const BONDED_DEVICE_ID_KEY = 'laptopguard_bonded_device_id';
+const BONDED_DEVICE_CACHE_KEY = 'laptopguard_bonded_device_cache';
+
+const cacheBondedDevice = (device: Device | null) => {
+  if (!device?.id) return;
+  localStorage.setItem(BONDED_DEVICE_ID_KEY, device.id);
+  localStorage.setItem(BONDED_DEVICE_CACHE_KEY, JSON.stringify(device));
+};
+
+const readCachedBondedDevice = (): Device | null => {
+  try {
+    const cached = localStorage.getItem(BONDED_DEVICE_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
 
 export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(() => {
@@ -79,14 +97,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setSelectedDeviceState((prev: Device | null) => {
         const next = d(prev);
         if (next?.id) {
-          localStorage.setItem('laptopguard_bonded_device_id', next.id);
+          cacheBondedDevice(next);
         }
         return next;
       });
     } else {
       setSelectedDeviceState(d);
       if (d?.id) {
-        localStorage.setItem('laptopguard_bonded_device_id', d.id);
+        cacheBondedDevice(d);
       }
     }
   };
@@ -164,7 +182,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     try {
-      const bondedId = localStorage.getItem('laptopguard_bonded_device_id');
+      const bondedId = localStorage.getItem(BONDED_DEVICE_ID_KEY);
+      const cachedBonded = readCachedBondedDevice();
       const devList = await api.getDevices();
       setDevices(devList);
 
@@ -172,10 +191,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const bonded = devList.find(d => d.id === bondedId);
         if (bonded) {
           setSelectedDevice(bonded);
+        } else if (cachedBonded?.id === bondedId) {
+          setSelectedDevice(cachedBonded);
         } else if (devList.length > 0) {
           setSelectedDevice(devList[0]);
         } else {
-          setSelectedDevice(null);
+          setSelectedDevice(cachedBonded);
         }
       } else if (!selectedDevice && devList.length > 0) {
         setSelectedDevice(devList[0]);
@@ -220,8 +241,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const res = await api.authorizeController({
       controller_id: cid,
-      controller_type: 'WEB_BROWSER',
-      display_name: 'Desktop Web Browser (' + (navigator.platform || 'Workstation') + ')',
+      controller_type: Capacitor.isNativePlatform() ? 'MOBILE_APP' : 'WEB_BROWSER',
+      display_name: Capacitor.isNativePlatform()
+        ? 'LaptopGuard Mobile App'
+        : 'Desktop Web Browser (' + (navigator.platform || 'Workstation') + ')',
       verification_code_or_pin: pin
     });
     if (res.is_trusted) {
@@ -258,7 +281,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               battery: data.battery,
               is_charging: data.is_charging,
               current_ssid: data.current_ssid,
-              last_seen: data.last_seen,
+                last_seen: data.last_seen,
+                last_location: data.last_location || d.last_location,
               status: d.status === 'Offline' ? 'Protected' : d.status
             };
           }

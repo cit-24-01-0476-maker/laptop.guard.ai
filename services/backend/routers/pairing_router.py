@@ -244,6 +244,32 @@ def claim_pairing_code(
     pairing_req.claimed_by_user_id = current_user.id
     clear_pairing_failures(rate_key)
 
+    # Keep the phone/browser that claimed the valid pairing code trusted after
+    # reloads and app updates. Without this, the device can be paired but the
+    # mobile controller may fall back to "authorize/pair again" on the next run.
+    claiming_controller_id = request.headers.get("x-controller-id")
+    if claiming_controller_id:
+        ua = (request.headers.get("user-agent") or "").lower()
+        is_mobile = "android" in ua or "iphone" in ua or "mobile" in ua or "wv" in ua
+        controller = db.query(models.TrustedController).filter(
+            models.TrustedController.id == claiming_controller_id,
+            models.TrustedController.user_id == current_user.id
+        ).first()
+        if controller:
+            controller.revoked_at = None
+            controller.last_used_at = now
+            controller.controller_type = "MOBILE_APP" if is_mobile else controller.controller_type
+        else:
+            controller = models.TrustedController(
+                id=claiming_controller_id,
+                user_id=current_user.id,
+                controller_type="MOBILE_APP" if is_mobile else "WEB_BROWSER",
+                display_name="Primary Mobile Controller" if is_mobile else "Trusted Web Controller",
+                created_at=now,
+                last_used_at=now
+            )
+            db.add(controller)
+
     # Fetch device details
     device = db.query(models.ProtectedDevice).filter(models.ProtectedDevice.id == pairing_req.protected_device_id).first()
 

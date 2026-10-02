@@ -1,5 +1,6 @@
 {
-  "version": "1.7.0",
-  "build_timestamp": 1790445000,
-  "release_notes": "Dell G15 3D Model, Live Remote Screen Mirror, AI Face Intruder Detection, Smart Wi-Fi Geofence, USB Trap, Safe Volume"
+  "version": "2.0.4",
+  "latest_version": "2.0.4",
+  "build_timestamp": 1790928000,
+  "release_notes": "Persistent phone pairing, trusted mobile controller restore, and in-app APK auto-update progress flow."
 }

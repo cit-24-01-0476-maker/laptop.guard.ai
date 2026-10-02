@@ -3,14 +3,16 @@ import io
 import zipfile
 import hmac
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import Response, JSONResponse, FileResponse, RedirectResponse
 from services.backend.config import hash_owner_key, settings
+from services.backend.auth import get_optional_user
+from services.backend import models
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["Downloads & Updates"])
 
-CURRENT_VERSION = "2.0.0"
-RELEASE_DATE = "2026-10-01"
+CURRENT_VERSION = "2.0.4"
+RELEASE_DATE = "2026-10-02"
 
 def _verify_owner_key(owner_key: str | None) -> None:
     supplied_hash = hash_owner_key(owner_key or "")
@@ -32,7 +34,7 @@ async def get_version_manifest(response: Response):
         "release_date": RELEASE_DATE,
         "auto_update_supported": True,
         "force_update": False,
-        "release_notes": "Authenticated realtime control, hardened owner PIN verification, native Windows service installer, and refreshed Android client.",
+        "release_notes": "Persistent phone pairing, trusted mobile controller restore, and in-app APK auto-update progress flow.",
         "download_urls": {
             "windows_setup": "/downloads/windows-setup",
             "windows_exe": "/downloads/windows-exe",
@@ -127,13 +129,17 @@ async def download_windows_exe():
     return RedirectResponse(url=release_url, status_code=302)
 
 @router.get("/android-apk")
-async def download_android_apk(x_owner_key: str | None = Header(default=None)):
+async def download_android_apk(
+    x_owner_key: str | None = Header(default=None),
+    current_user: models.User | None = Depends(get_optional_user)
+):
     """
     Delivers the compiled Android Mobile App installer package (APK).
     If available locally on disk, serves it directly.
     Otherwise, redirects to the high-speed GitHub Release CDN.
     """
-    _verify_owner_key(x_owner_key)
+    if current_user is None:
+        _verify_owner_key(x_owner_key)
     root = Path(__file__).resolve().parents[3]
     candidate_paths = [
         root / "artifacts" / "final" / "LaptopGuard-AI-Android-sideload.apk",

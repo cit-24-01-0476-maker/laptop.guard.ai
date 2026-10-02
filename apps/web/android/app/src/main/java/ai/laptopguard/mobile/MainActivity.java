@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(BiometricPlugin.class);
+        registerPlugin(LaptopGuardUpdaterPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Preemptively request camera permission if not granted yet
